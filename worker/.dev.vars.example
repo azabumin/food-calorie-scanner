@@ -1,0 +1,3 @@
+# Copy this file to .dev.vars (gitignored) for local `wrangler dev` testing only.
+# Never commit the real key — production uses `wrangler secret put ANTHROPIC_API_KEY`.
+ANTHROPIC_API_KEY=sk-ant-api03-...
