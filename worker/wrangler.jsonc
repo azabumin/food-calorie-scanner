@@ -1,0 +1,18 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "food-calorie-scanner-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-01",
+  "observability": {
+    "enabled": true
+  },
+  // GitHub Pages origin allowed to call this API. Update if the repo/user ever changes.
+  "vars": {
+    "ALLOWED_ORIGIN": "https://azabumin.github.io"
+  },
+  "kv_namespaces": [
+    { "binding": "RATE_LIMIT_KV", "id": "275633658dcb46419225fc6ab30a7241" }
+  ]
+  // ANTHROPIC_API_KEY is NOT set here — it's a secret.
+  // Run: wrangler secret put ANTHROPIC_API_KEY
+}

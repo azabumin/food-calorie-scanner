@@ -10,12 +10,13 @@ photo into a dish name / ingredient list / calorie estimate.
 ```bash
 cd worker
 npm install
+npx wrangler types                     # generates worker-configuration.d.ts (gitignored)
 npx wrangler login                     # opens a browser to authorize Cloudflare
 npx wrangler kv namespace create RATE_LIMIT_KV
 ```
 
-The last command prints an `id`. Paste it into `wrangler.toml` under
-`[[kv_namespaces]]` → `id = "..."`.
+The last command prints an `id`. Paste it into `wrangler.jsonc` under
+`kv_namespaces` → `id: "..."`, then re-run `npx wrangler types`.
 
 Then set the Anthropic key as a secret — **type the value yourself when prompted,
 don't put it in any file**:

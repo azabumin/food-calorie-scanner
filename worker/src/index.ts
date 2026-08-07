@@ -1,7 +1,10 @@
-export interface Env {
-  ANTHROPIC_API_KEY: string;
-  ALLOWED_ORIGIN: string;
-  RATE_LIMIT_KV: KVNamespace;
+// `Env` (RATE_LIMIT_KV, ALLOWED_ORIGIN) comes from the generated worker-configuration.d.ts
+// (run `npx wrangler types` after changing wrangler.jsonc). ANTHROPIC_API_KEY is a secret,
+// so it isn't in that config-derived type — extend it here.
+declare global {
+  interface Env {
+    ANTHROPIC_API_KEY: string;
+  }
 }
 
 // Cost-control caps for the shared Anthropic API key. Adjust as needed.
