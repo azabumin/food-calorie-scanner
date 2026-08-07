@@ -1,0 +1,16 @@
+name = "food-calorie-scanner-api"
+main = "src/index.ts"
+compatibility_date = "2025-04-01"
+
+# GitHub Pages origin allowed to call this API. Update if the repo/user ever changes.
+[vars]
+ALLOWED_ORIGIN = "https://azabumin.github.io"
+
+# Run `wrangler kv namespace create RATE_LIMIT_KV` and paste the returned id below
+# before the first `wrangler deploy`.
+[[kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+# ANTHROPIC_API_KEY is NOT set here — it's a secret.
+# Run: wrangler secret put ANTHROPIC_API_KEY
