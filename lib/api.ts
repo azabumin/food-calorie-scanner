@@ -1,5 +1,6 @@
 import { WORKER_URL } from '../constants/config';
-import type { AnalysisResult, CoachAdvice, DietStatus, NutrientTotals } from '../types';
+import { STRINGS } from './i18n';
+import type { AnalysisResult, CoachAdvice, DietStatus, Lang, NutrientTotals } from '../types';
 
 export class AnalyzeError extends Error {
   constructor(message: string, public status?: number) {
@@ -8,23 +9,28 @@ export class AnalyzeError extends Error {
   }
 }
 
-export async function analyzeFoodPhoto(base64: string, mediaType: string): Promise<AnalysisResult> {
+export async function analyzeFoodPhoto(
+  base64: string,
+  mediaType: string,
+  lang: Lang
+): Promise<AnalysisResult> {
+  const t = STRINGS[lang].errors;
   let response: Response;
   try {
     response = await fetch(`${WORKER_URL}/analyze`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image: base64, mediaType }),
+      body: JSON.stringify({ image: base64, mediaType, lang }),
     });
   } catch {
-    throw new AnalyzeError('서버에 연결할 수 없습니다. 인터넷 연결을 확인해 주세요.');
+    throw new AnalyzeError(t.networkError);
   }
 
   if (response.status === 429) {
-    throw new AnalyzeError('오늘 사용 가능한 분석 횟수를 모두 사용했습니다. 내일 다시 시도해 주세요.', 429);
+    throw new AnalyzeError(t.rateLimited, 429);
   }
   if (!response.ok) {
-    throw new AnalyzeError('분석 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.', response.status);
+    throw new AnalyzeError(t.analyzeFailed, response.status);
   }
 
   const data = (await response.json()) as AnalysisResult;
@@ -38,9 +44,11 @@ export type CoachRequest = {
   status: DietStatus;
   nutrients: NutrientTotals;
   meals: { dishName: string; calories: number }[];
+  lang: Lang;
 };
 
 export async function getCoachAdvice(req: CoachRequest): Promise<CoachAdvice> {
+  const t = STRINGS[req.lang].errors;
   let response: Response;
   try {
     response = await fetch(`${WORKER_URL}/coach`, {
@@ -49,14 +57,14 @@ export async function getCoachAdvice(req: CoachRequest): Promise<CoachAdvice> {
       body: JSON.stringify(req),
     });
   } catch {
-    throw new AnalyzeError('서버에 연결할 수 없습니다. 인터넷 연결을 확인해 주세요.');
+    throw new AnalyzeError(t.networkError);
   }
 
   if (response.status === 429) {
-    throw new AnalyzeError('오늘 사용 가능한 분석 횟수를 모두 사용했습니다. 내일 다시 시도해 주세요.', 429);
+    throw new AnalyzeError(t.rateLimited, 429);
   }
   if (!response.ok) {
-    throw new AnalyzeError('코치 조언을 받아오는 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.', response.status);
+    throw new AnalyzeError(t.coachFailed, response.status);
   }
 
   const data = (await response.json()) as CoachAdvice;

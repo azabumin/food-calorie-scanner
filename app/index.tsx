@@ -17,14 +17,16 @@ import NutritionBalance from '../components/NutritionBalance';
 import SummaryCard from '../components/SummaryCard';
 import { COLORS, RADIUS, SPACING } from '../constants/theme';
 import { AnalyzeError, analyzeFoodPhoto, getCoachAdvice } from '../lib/api';
-import { loadGoalCalories, loadTodayLog, saveGoalCalories, saveTodayLog } from '../lib/storage';
-import type { AnalysisResult, CoachAdvice, DietStatus, MealEntry } from '../types';
+import { detectDefaultLang, STRINGS } from '../lib/i18n';
+import { loadGoalCalories, loadLang, loadTodayLog, saveGoalCalories, saveLang, saveTodayLog } from '../lib/storage';
+import type { AnalysisResult, CoachAdvice, DietStatus, Lang, MealEntry } from '../types';
 
 const NEAR_GOAL_RATIO = 0.9;
 const DINNER_HOUR = 18;
 
 export default function HomeScreen() {
   const [hydrated, setHydrated] = useState(false);
+  const [lang, setLang] = useState<Lang>('ko');
   const [goal, setGoal] = useState(1800);
   const [meals, setMeals] = useState<MealEntry[]>([]);
 
@@ -37,14 +39,21 @@ export default function HomeScreen() {
   const [coachLoading, setCoachLoading] = useState(false);
   const [coachError, setCoachError] = useState<string | null>(null);
 
-  // Load persisted goal + today's log once on mount. The save effects below
-  // are gated on `hydrated` so they can't fire with the empty initial state
-  // and clobber what's already in storage before this finishes.
+  const t = STRINGS[lang];
+
+  // Load persisted goal + today's log + language once on mount. The save
+  // effects below are gated on `hydrated` so they can't fire with the empty
+  // initial state and clobber what's already in storage before this finishes.
   useEffect(() => {
     (async () => {
-      const [loadedGoal, loadedMeals] = await Promise.all([loadGoalCalories(), loadTodayLog()]);
+      const [loadedGoal, loadedMeals, loadedLang] = await Promise.all([
+        loadGoalCalories(),
+        loadTodayLog(),
+        loadLang(),
+      ]);
       setGoal(loadedGoal);
       setMeals(loadedMeals);
+      setLang(loadedLang ?? detectDefaultLang());
       setHydrated(true);
     })();
   }, []);
@@ -58,6 +67,11 @@ export default function HomeScreen() {
     if (!hydrated) return;
     saveTodayLog(meals);
   }, [meals, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    saveLang(lang);
+  }, [lang, hydrated]);
 
   const consumed = useMemo(() => meals.reduce((sum, m) => sum + m.totalCalories, 0), [meals]);
   const nutrientTotals = useMemo(
@@ -91,12 +105,12 @@ export default function HomeScreen() {
         { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG, base64: true }
       );
       if (!manipulated.base64) {
-        throw new Error('이미지를 처리할 수 없습니다.');
+        throw new Error(t.errors.imageProcessFailed);
       }
-      const analysis = await analyzeFoodPhoto(manipulated.base64, 'image/jpeg');
+      const analysis = await analyzeFoodPhoto(manipulated.base64, 'image/jpeg', lang);
       setResult(analysis);
     } catch (e) {
-      setErrorMsg(e instanceof AnalyzeError ? e.message : '이미지를 분석하는 중 문제가 발생했습니다.');
+      setErrorMsg(e instanceof AnalyzeError ? e.message : t.errors.analyzeGeneric);
     } finally {
       setAnalyzing(false);
     }
@@ -110,11 +124,7 @@ export default function HomeScreen() {
           ? await ImagePicker.requestCameraPermissionsAsync()
           : await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
-        setErrorMsg(
-          source === 'camera'
-            ? '카메라 권한이 필요합니다. 브라우저 또는 기기 설정에서 권한을 허용해 주세요.'
-            : '사진 접근 권한이 필요합니다. 브라우저 또는 기기 설정에서 권한을 허용해 주세요.'
-        );
+        setErrorMsg(source === 'camera' ? t.errors.cameraPermission : t.errors.libraryPermission);
         return;
       }
 
@@ -130,7 +140,7 @@ export default function HomeScreen() {
       setResult(null);
       await analyze(uri);
     } catch {
-      setErrorMsg('사진을 불러오는 중 문제가 발생했습니다.');
+      setErrorMsg(t.errors.pickGeneric);
     }
   }
 
@@ -166,12 +176,11 @@ export default function HomeScreen() {
         status,
         nutrients: nutrientTotals,
         meals: meals.map((m) => ({ dishName: m.dishName, calories: m.totalCalories })),
+        lang,
       });
       setCoachAdvice(advice);
     } catch (e) {
-      setCoachError(
-        e instanceof AnalyzeError ? e.message : '코치 조언을 받아오는 중 문제가 발생했습니다.'
-      );
+      setCoachError(e instanceof AnalyzeError ? e.message : t.errors.coachFailed);
     } finally {
       setCoachLoading(false);
     }
@@ -179,10 +188,27 @@ export default function HomeScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>오늘의 다이어트 다이어리</Text>
-      <Text style={styles.subtitle}>
-        사진 한 장으로 칼로리와 영양을 기록하고, AI 코치의 저녁 식사 조언까지 받아보세요.
-      </Text>
+      <View style={styles.langRow}>
+        <TouchableOpacity
+          style={[styles.langPill, lang === 'ko' && styles.langPillActive]}
+          onPress={() => setLang('ko')}
+        >
+          <Text style={[styles.langPillText, lang === 'ko' && styles.langPillTextActive]}>
+            {t.langToggle.ko}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.langPill, lang === 'ja' && styles.langPillActive]}
+          onPress={() => setLang('ja')}
+        >
+          <Text style={[styles.langPillText, lang === 'ja' && styles.langPillTextActive]}>
+            {t.langToggle.ja}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      <Text style={styles.title}>{t.app.title}</Text>
+      <Text style={styles.subtitle}>{t.app.subtitle}</Text>
 
       {!imageUri && (
         <>
@@ -193,27 +219,27 @@ export default function HomeScreen() {
             remaining={remaining}
             status={status}
             overWarning={overWarning}
+            t={t}
           />
 
           <View style={styles.addCard}>
             <TouchableOpacity style={styles.primaryButton} onPress={() => handlePick('camera')}>
-              <Text style={styles.primaryButtonText}>사진으로 식사 기록하기</Text>
+              <Text style={styles.primaryButtonText}>{t.addCard.cameraButton}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.secondaryButton} onPress={() => handlePick('library')}>
-              <Text style={styles.secondaryButtonText}>갤러리에서 선택</Text>
+              <Text style={styles.secondaryButtonText}>{t.addCard.galleryButton}</Text>
             </TouchableOpacity>
-            <Text style={styles.helperText}>
-              * AI가 추정한 칼로리·영양이며, 실제 조리법과 양에 따라 오차가 있을 수 있습니다.
-            </Text>
+            <Text style={styles.helperText}>{t.addCard.helper}</Text>
           </View>
 
-          <MealList meals={meals} onDelete={deleteMeal} />
-          <NutritionBalance nutrients={nutrientTotals} />
+          <MealList meals={meals} onDelete={deleteMeal} lang={lang} t={t} />
+          <NutritionBalance nutrients={nutrientTotals} t={t} />
           <CoachCard
             advice={coachAdvice}
             loading={coachLoading}
             errorMsg={coachError}
             onRequest={requestCoachAdvice}
+            t={t}
           />
         </>
       )}
@@ -225,7 +251,7 @@ export default function HomeScreen() {
           {analyzing && (
             <View style={styles.centerBlock}>
               <ActivityIndicator color={COLORS.primary} size="large" />
-              <Text style={styles.loadingText}>사진을 분석하고 있어요...</Text>
+              <Text style={styles.loadingText}>{t.result.analyzing}</Text>
             </View>
           )}
 
@@ -233,7 +259,7 @@ export default function HomeScreen() {
             <View style={styles.centerBlock}>
               <Text style={styles.errorText}>{errorMsg}</Text>
               <TouchableOpacity style={styles.primaryButton} onPress={() => analyze(imageUri)}>
-                <Text style={styles.primaryButtonText}>다시 시도</Text>
+                <Text style={styles.primaryButtonText}>{t.result.retry}</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -256,13 +282,16 @@ export default function HomeScreen() {
               ))}
 
               <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>총 칼로리</Text>
+                <Text style={styles.totalLabel}>{t.result.totalCalories}</Text>
                 <Text style={styles.totalValue}>{result.totalCalories} kcal</Text>
               </View>
 
               <Text style={styles.macroLine}>
-                단백질 {Math.round(result.nutrients.protein)}g · 지방 {Math.round(result.nutrients.fat)}g
-                · 탄수화물 {Math.round(result.nutrients.carbs)}g
+                {t.result.macroLine(
+                  Math.round(result.nutrients.protein),
+                  Math.round(result.nutrients.fat),
+                  Math.round(result.nutrients.carbs)
+                )}
               </Text>
 
               {!!result.confidenceNote && (
@@ -270,13 +299,13 @@ export default function HomeScreen() {
               )}
 
               <TouchableOpacity style={styles.primaryButton} onPress={confirmAddMeal}>
-                <Text style={styles.primaryButtonText}>오늘 식사 기록에 추가하기</Text>
+                <Text style={styles.primaryButtonText}>{t.result.addToLog}</Text>
               </TouchableOpacity>
             </View>
           )}
 
           <TouchableOpacity style={styles.secondaryButton} onPress={cancelPick}>
-            <Text style={styles.secondaryButtonText}>다른 사진으로 다시 분석하기</Text>
+            <Text style={styles.secondaryButtonText}>{t.result.tryAnotherPhoto}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -295,6 +324,28 @@ const styles = StyleSheet.create({
     width: '100%',
     alignSelf: 'center',
     gap: SPACING.md,
+  },
+  langRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: SPACING.xs,
+  },
+  langPill: {
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 6,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.chipBg,
+  },
+  langPillActive: {
+    backgroundColor: COLORS.primary,
+  },
+  langPillText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.textMuted,
+  },
+  langPillTextActive: {
+    color: '#FFFFFF',
   },
   title: {
     fontSize: 26,

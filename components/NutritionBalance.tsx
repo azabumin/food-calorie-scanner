@@ -1,29 +1,37 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { COLORS, RADIUS, SPACING } from '../constants/theme';
+import type { Strings } from '../lib/i18n';
 import type { NutrientTotals } from '../types';
 
 type Props = {
   nutrients: NutrientTotals;
+  t: Strings;
 };
 
 const RECOMMENDED = { carbs: 50, protein: 30, fat: 20 };
 
-const MACROS: { key: keyof NutrientTotals; label: string; color: string; kcalPerG: number }[] = [
-  { key: 'carbs', label: '탄수화물', color: COLORS.macroCarbs, kcalPerG: 4 },
-  { key: 'protein', label: '단백질', color: COLORS.macroProtein, kcalPerG: 4 },
-  { key: 'fat', label: '지방', color: COLORS.macroFat, kcalPerG: 9 },
+const MACRO_META: { key: keyof NutrientTotals; color: string; kcalPerG: number }[] = [
+  { key: 'carbs', color: COLORS.macroCarbs, kcalPerG: 4 },
+  { key: 'protein', color: COLORS.macroProtein, kcalPerG: 4 },
+  { key: 'fat', color: COLORS.macroFat, kcalPerG: 9 },
 ];
 
-export default function NutritionBalance({ nutrients }: Props) {
-  const macroCalories = MACROS.map((m) => ({ ...m, kcal: nutrients[m.key] * m.kcalPerG }));
+export default function NutritionBalance({ nutrients, t }: Props) {
+  const labels: Record<keyof NutrientTotals, string> = {
+    carbs: t.nutrition.carbs,
+    protein: t.nutrition.protein,
+    fat: t.nutrition.fat,
+  };
+  const macros = MACRO_META.map((m) => ({ ...m, label: labels[m.key] }));
+  const macroCalories = macros.map((m) => ({ ...m, kcal: nutrients[m.key] * m.kcalPerG }));
   const totalKcal = macroCalories.reduce((sum, m) => sum + m.kcal, 0);
 
   if (totalKcal <= 0) {
     return (
       <View style={styles.card}>
-        <Text style={styles.title}>영양 밸런스</Text>
-        <Text style={styles.emptyText}>아직 기록된 영양 정보가 없어요.</Text>
+        <Text style={styles.title}>{t.nutrition.title}</Text>
+        <Text style={styles.emptyText}>{t.nutrition.empty}</Text>
       </View>
     );
   }
@@ -32,14 +40,11 @@ export default function NutritionBalance({ nutrients }: Props) {
   const shortfall = withPercent
     .map((m) => ({ label: m.label, gap: RECOMMENDED[m.key] - m.percent }))
     .sort((a, b) => b.gap - a.gap)[0];
-  const tip =
-    shortfall.gap > 10
-      ? `오늘은 ${shortfall.label}이(가) 조금 부족해 보여요.`
-      : '오늘 영양 밸런스가 균형 잡혀 있어요.';
+  const tip = shortfall.gap > 10 ? t.nutrition.tipShortfall(shortfall.label) : t.nutrition.tipBalanced;
 
   return (
     <View style={styles.card}>
-      <Text style={styles.title}>영양 밸런스</Text>
+      <Text style={styles.title}>{t.nutrition.title}</Text>
 
       <View style={styles.bar}>
         {withPercent.map((m) => (

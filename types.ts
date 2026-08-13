@@ -32,3 +32,5 @@ export type CoachAdvice = {
   dinnerAdvice: string;
   coachNote: string;
 };
+
+export type Lang = 'ko' | 'ja';

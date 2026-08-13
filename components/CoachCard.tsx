@@ -1,6 +1,7 @@
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { COLORS, RADIUS, SPACING } from '../constants/theme';
+import type { Strings } from '../lib/i18n';
 import type { CoachAdvice } from '../types';
 
 type Props = {
@@ -8,24 +9,25 @@ type Props = {
   loading: boolean;
   errorMsg: string | null;
   onRequest: () => void;
+  t: Strings;
 };
 
-export default function CoachCard({ advice, loading, errorMsg, onRequest }: Props) {
+export default function CoachCard({ advice, loading, errorMsg, onRequest, t }: Props) {
   return (
     <View style={styles.card}>
-      <Text style={styles.title}>AI 다이어트 코치</Text>
-      <Text style={styles.subtitle}>오늘 식사를 바탕으로 저녁 메뉴와 다이어트 조언을 받아보세요.</Text>
+      <Text style={styles.title}>{t.coach.title}</Text>
+      <Text style={styles.subtitle}>{t.coach.subtitle}</Text>
 
       {!loading && (
         <TouchableOpacity style={styles.button} onPress={onRequest}>
-          <Text style={styles.buttonText}>{advice ? '다시 물어보기' : '저녁 뭐 먹을지 물어보기'}</Text>
+          <Text style={styles.buttonText}>{advice ? t.coach.askAgainButton : t.coach.askButton}</Text>
         </TouchableOpacity>
       )}
 
       {loading && (
         <View style={styles.centerBlock}>
           <ActivityIndicator color={COLORS.primary} />
-          <Text style={styles.loadingText}>코치가 생각하는 중이에요...</Text>
+          <Text style={styles.loadingText}>{t.coach.loading}</Text>
         </View>
       )}
 
@@ -34,11 +36,11 @@ export default function CoachCard({ advice, loading, errorMsg, onRequest }: Prop
       {!loading && !errorMsg && advice && (
         <View style={styles.adviceBlock}>
           <View style={styles.adviceSection}>
-            <Text style={styles.adviceLabel}>🍽 저녁 추천</Text>
+            <Text style={styles.adviceLabel}>{t.coach.dinnerLabel}</Text>
             <Text style={styles.adviceText}>{advice.dinnerAdvice}</Text>
           </View>
           <View style={styles.adviceSection}>
-            <Text style={styles.adviceLabel}>💬 코치 한마디</Text>
+            <Text style={styles.adviceLabel}>{t.coach.noteLabel}</Text>
             <Text style={styles.adviceText}>{advice.coachNote}</Text>
           </View>
         </View>

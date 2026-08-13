@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { COLORS, RADIUS, SPACING } from '../constants/theme';
+import type { Strings } from '../lib/i18n';
 import type { DietStatus } from '../types';
 
 type Props = {
@@ -11,6 +12,7 @@ type Props = {
   remaining: number;
   status: DietStatus;
   overWarning: boolean;
+  t: Strings;
 };
 
 const STATUS_COLOR: Record<DietStatus, string> = {
@@ -19,13 +21,7 @@ const STATUS_COLOR: Record<DietStatus, string> = {
   over: COLORS.danger,
 };
 
-const STATUS_MESSAGE: Record<DietStatus, string> = {
-  ok: '오늘 페이스가 좋아요. 이대로 유지해보세요.',
-  near: '목표에 거의 다 왔어요. 저녁은 가볍게 가볼까요?',
-  over: '오늘 목표 칼로리를 초과했어요.',
-};
-
-export default function SummaryCard({ goal, onGoalChange, consumed, remaining, status, overWarning }: Props) {
+export default function SummaryCard({ goal, onGoalChange, consumed, remaining, status, overWarning, t }: Props) {
   const [goalText, setGoalText] = useState(String(goal));
 
   useEffect(() => {
@@ -43,11 +39,13 @@ export default function SummaryCard({ goal, onGoalChange, consumed, remaining, s
 
   const progress = goal > 0 ? Math.min(consumed / goal, 1) : 0;
   const barColor = STATUS_COLOR[status];
+  const statusMessage =
+    status === 'ok' ? t.summary.statusOk : status === 'near' ? t.summary.statusNear : t.summary.statusOver;
 
   return (
     <View style={styles.card}>
       <View style={styles.goalRow}>
-        <Text style={styles.goalLabel}>오늘 목표 칼로리</Text>
+        <Text style={styles.goalLabel}>{t.summary.goalLabel}</Text>
         <View style={styles.goalInputRow}>
           <TextInput
             style={styles.goalInput}
@@ -58,7 +56,7 @@ export default function SummaryCard({ goal, onGoalChange, consumed, remaining, s
             keyboardType="number-pad"
             maxLength={5}
           />
-          <Text style={styles.goalUnit}>kcal</Text>
+          <Text style={styles.goalUnit}>{t.summary.unit}</Text>
         </View>
       </View>
 
@@ -69,24 +67,22 @@ export default function SummaryCard({ goal, onGoalChange, consumed, remaining, s
       <View style={styles.numbersRow}>
         <View>
           <Text style={styles.numberValue}>{consumed}</Text>
-          <Text style={styles.numberLabel}>섭취 kcal</Text>
+          <Text style={styles.numberLabel}>{t.summary.consumedLabel}</Text>
         </View>
         <View style={styles.numbersRight}>
           <Text style={[styles.numberValue, { color: remaining < 0 ? COLORS.danger : COLORS.text }]}>
             {remaining < 0 ? `+${Math.abs(remaining)}` : remaining}
           </Text>
-          <Text style={styles.numberLabel}>{remaining < 0 ? '초과 kcal' : '남은 kcal'}</Text>
+          <Text style={styles.numberLabel}>{remaining < 0 ? t.summary.overLabel : t.summary.remainingLabel}</Text>
         </View>
       </View>
 
       {overWarning ? (
         <View style={styles.warningBanner}>
-          <Text style={styles.warningText}>
-            ⚠ 아직 저녁 전인데 벌써 목표 칼로리를 넘었어요. 저녁은 가볍게 조절해보세요.
-          </Text>
+          <Text style={styles.warningText}>{t.summary.warning}</Text>
         </View>
       ) : (
-        <Text style={[styles.statusText, { color: barColor }]}>{STATUS_MESSAGE[status]}</Text>
+        <Text style={[styles.statusText, { color: barColor }]}>{statusMessage}</Text>
       )}
     </View>
   );

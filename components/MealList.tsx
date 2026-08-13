@@ -1,32 +1,37 @@
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { COLORS, RADIUS, SPACING } from '../constants/theme';
-import type { MealEntry } from '../types';
+import type { Strings } from '../lib/i18n';
+import type { Lang, MealEntry } from '../types';
 
 type Props = {
   meals: MealEntry[];
   onDelete: (id: string) => void;
+  lang: Lang;
+  t: Strings;
 };
 
-export default function MealList({ meals, onDelete }: Props) {
+const TIME_LOCALE: Record<Lang, string> = { ko: 'ko-KR', ja: 'ja-JP' };
+
+export default function MealList({ meals, onDelete, lang, t }: Props) {
   return (
     <View style={styles.card}>
-      <Text style={styles.title}>오늘의 식사 ({meals.length})</Text>
+      <Text style={styles.title}>{t.meals.title(meals.length)}</Text>
 
       {meals.length === 0 ? (
-        <Text style={styles.emptyText}>아직 기록된 식사가 없어요. 사진을 올려서 첫 식사를 기록해보세요.</Text>
+        <Text style={styles.emptyText}>{t.meals.empty}</Text>
       ) : (
         meals.map((meal, index) => (
           <View key={meal.id} style={[styles.row, index === 0 && styles.rowFirst]}>
             <View style={styles.rowInfo}>
               <Text style={styles.time}>
-                {new Date(meal.time).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+                {new Date(meal.time).toLocaleTimeString(TIME_LOCALE[lang], { hour: '2-digit', minute: '2-digit' })}
               </Text>
               <Text style={styles.dishName}>{meal.dishName}</Text>
             </View>
             <Text style={styles.calories}>{meal.totalCalories} kcal</Text>
             <TouchableOpacity onPress={() => onDelete(meal.id)} style={styles.deleteButton}>
-              <Text style={styles.deleteButtonText}>삭제</Text>
+              <Text style={styles.deleteButtonText}>{t.meals.delete}</Text>
             </TouchableOpacity>
           </View>
         ))

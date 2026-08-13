@@ -1,8 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import type { MealEntry } from '../types';
+import type { Lang, MealEntry } from '../types';
 
 const GOAL_KEY = 'diet:goalCalories';
+const LANG_KEY = 'diet:lang';
 const DEFAULT_GOAL = 1800;
 
 export function todayKey(): string {
@@ -36,4 +37,13 @@ export async function loadTodayLog(): Promise<MealEntry[]> {
 
 export async function saveTodayLog(entries: MealEntry[]): Promise<void> {
   await AsyncStorage.setItem(logKey(todayKey()), JSON.stringify(entries));
+}
+
+export async function loadLang(): Promise<Lang | null> {
+  const raw = await AsyncStorage.getItem(LANG_KEY);
+  return raw === 'ko' || raw === 'ja' ? raw : null;
+}
+
+export async function saveLang(lang: Lang): Promise<void> {
+  await AsyncStorage.setItem(LANG_KEY, lang);
 }
