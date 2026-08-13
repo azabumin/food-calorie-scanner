@@ -77,6 +77,17 @@ export default function HomeScreen() {
     saveLang(lang);
   }, [lang, hydrated]);
 
+  // AI-generated coach advice and error text are captured in whatever language was
+  // active when they were fetched — they don't retroactively translate. Clear them on
+  // a language switch instead of leaving old-language text sitting under new-language
+  // labels; the meal log and any in-progress photo result are left alone since clearing
+  // those would discard the user's work, not just stale text.
+  useEffect(() => {
+    setCoachAdvice(null);
+    setCoachError(null);
+    setErrorMsg(null);
+  }, [lang]);
+
   const consumed = useMemo(() => meals.reduce((sum, m) => sum + m.totalCalories, 0), [meals]);
   const nutrientTotals = useMemo(
     () =>
