@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { LANGUAGES } from '../types';
 import type { Lang, MealEntry } from '../types';
 
 const GOAL_KEY = 'diet:goalCalories';
@@ -41,7 +42,7 @@ export async function saveTodayLog(entries: MealEntry[]): Promise<void> {
 
 export async function loadLang(): Promise<Lang | null> {
   const raw = await AsyncStorage.getItem(LANG_KEY);
-  return raw === 'ko' || raw === 'ja' ? raw : null;
+  return LANGUAGES.some((l) => l.code === raw) ? (raw as Lang) : null;
 }
 
 export async function saveLang(lang: Lang): Promise<void> {

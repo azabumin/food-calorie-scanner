@@ -11,7 +11,19 @@ type Props = {
   t: Strings;
 };
 
-const TIME_LOCALE: Record<Lang, string> = { ko: 'ko-KR', ja: 'ja-JP' };
+const TIME_LOCALE: Record<Lang, string> = {
+  ja: 'ja-JP',
+  ko: 'ko-KR',
+  en: 'en-US',
+  vi: 'vi-VN',
+  zh: 'zh-CN',
+  id: 'id-ID',
+  tl: 'fil-PH',
+  th: 'th-TH',
+  my: 'my-MM',
+  ne: 'ne-NP',
+  pt: 'pt-BR',
+};
 
 export default function MealList({ meals, onDelete, lang, t }: Props) {
   return (

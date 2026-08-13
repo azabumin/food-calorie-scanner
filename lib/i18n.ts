@@ -63,10 +63,7 @@ export type Strings = {
     dinnerLabel: string;
     noteLabel: string;
   };
-  langToggle: {
-    ko: string;
-    ja: string;
-  };
+  chooseLanguage: string;
 };
 
 const ko: Strings = {
@@ -132,10 +129,7 @@ const ko: Strings = {
     dinnerLabel: '🍽 저녁 추천',
     noteLabel: '💬 코치 한마디',
   },
-  langToggle: {
-    ko: '한국어',
-    ja: '日本語',
-  },
+  chooseLanguage: '언어 선택',
 };
 
 const ja: Strings = {
@@ -201,17 +195,624 @@ const ja: Strings = {
     dinnerLabel: '🍽 夕食のおすすめ',
     noteLabel: '💬 コーチからの一言',
   },
-  langToggle: {
-    ko: '한국어',
-    ja: '日本語',
-  },
+  chooseLanguage: '言語を選択',
 };
 
-export const STRINGS: Record<Lang, Strings> = { ko, ja };
+const en: Strings = {
+  app: {
+    title: "Today's Diet Diary",
+    subtitle: 'Snap a photo of your meal to log calories and nutrition, and get dinner advice from your AI coach.',
+  },
+  addCard: {
+    cameraButton: 'Log a Meal by Photo',
+    galleryButton: 'Choose from Gallery',
+    helper: '* Calories and nutrition are AI estimates and may vary from the actual recipe and portion size.',
+  },
+  errors: {
+    cameraPermission: 'Camera access is needed. Please allow it in your browser or device settings.',
+    libraryPermission: 'Photo access is needed. Please allow it in your browser or device settings.',
+    imageProcessFailed: 'Could not process the image.',
+    analyzeGeneric: 'Something went wrong while analyzing the photo.',
+    pickGeneric: 'There was a problem loading the photo.',
+    networkError: 'Could not connect to the server. Please check your internet connection.',
+    rateLimited: "Today's analysis limit has been reached. Please try again tomorrow.",
+    analyzeFailed: 'Something went wrong during analysis. Please try again in a moment.',
+    coachFailed: 'Could not get advice from the coach. Please try again in a moment.',
+  },
+  result: {
+    analyzing: 'Analyzing your photo...',
+    retry: 'Try Again',
+    totalCalories: 'Total Calories',
+    macroLine: (p, f, c) => `Protein ${p}g · Fat ${f}g · Carbs ${c}g`,
+    addToLog: "Add to Today's Log",
+    tryAnotherPhoto: 'Analyze Another Photo',
+  },
+  summary: {
+    goalLabel: "Today's Calorie Goal",
+    unit: 'kcal',
+    consumedLabel: 'kcal eaten',
+    remainingLabel: 'kcal left',
+    overLabel: 'kcal over',
+    statusOk: "You're on a good pace today. Keep it up.",
+    statusNear: "You're almost at your goal. Maybe go light on dinner?",
+    statusOver: "You've gone over today's calorie goal.",
+    warning: "⚠ It's not even dinner yet and you're already over your goal. Try to keep dinner light.",
+  },
+  nutrition: {
+    title: 'Nutrition Balance',
+    empty: 'No nutrition data recorded yet.',
+    carbs: 'Carbs',
+    protein: 'Protein',
+    fat: 'Fat',
+    tipShortfall: (macro) => `You could use a bit more ${macro} today.`,
+    tipBalanced: 'Your nutrition balance looks good today.',
+  },
+  meals: {
+    title: (count) => `Today's Meals (${count})`,
+    empty: 'No meals logged yet. Upload a photo to log your first meal.',
+    delete: 'Delete',
+  },
+  coach: {
+    title: 'AI Diet Coach',
+    subtitle: "Get dinner suggestions and diet advice based on today's meals.",
+    askButton: 'Ask What to Eat for Dinner',
+    askAgainButton: 'Ask Again',
+    loading: 'The coach is thinking...',
+    dinnerLabel: '🍽 Dinner Suggestion',
+    noteLabel: "💬 Coach's Note",
+  },
+  chooseLanguage: 'Choose Language',
+};
+
+const vi: Strings = {
+  app: {
+    title: 'Nhật Ký Ăn Kiêng Hôm Nay',
+    subtitle: 'Chụp ảnh bữa ăn để ghi lại calo và dinh dưỡng, đồng thời nhận lời khuyên bữa tối từ huấn luyện viên AI.',
+  },
+  addCard: {
+    cameraButton: 'Ghi Lại Bữa Ăn Bằng Ảnh',
+    galleryButton: 'Chọn Từ Thư Viện',
+    helper: '* Calo và dinh dưỡng là ước tính của AI, có thể khác với công thức và khẩu phần thực tế.',
+  },
+  errors: {
+    cameraPermission: 'Cần quyền truy cập máy ảnh. Vui lòng cho phép trong cài đặt trình duyệt hoặc thiết bị.',
+    libraryPermission: 'Cần quyền truy cập ảnh. Vui lòng cho phép trong cài đặt trình duyệt hoặc thiết bị.',
+    imageProcessFailed: 'Không thể xử lý hình ảnh.',
+    analyzeGeneric: 'Đã xảy ra sự cố khi phân tích ảnh.',
+    pickGeneric: 'Đã xảy ra sự cố khi tải ảnh.',
+    networkError: 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối internet.',
+    rateLimited: 'Đã đạt giới hạn số lần phân tích hôm nay. Vui lòng thử lại vào ngày mai.',
+    analyzeFailed: 'Đã xảy ra sự cố trong quá trình phân tích. Vui lòng thử lại sau.',
+    coachFailed: 'Không thể nhận lời khuyên từ huấn luyện viên. Vui lòng thử lại sau.',
+  },
+  result: {
+    analyzing: 'Đang phân tích ảnh của bạn...',
+    retry: 'Thử Lại',
+    totalCalories: 'Tổng Calo',
+    macroLine: (p, f, c) => `Đạm ${p}g · Chất béo ${f}g · Carb ${c}g`,
+    addToLog: 'Thêm Vào Nhật Ký Hôm Nay',
+    tryAnotherPhoto: 'Phân Tích Ảnh Khác',
+  },
+  summary: {
+    goalLabel: 'Mục Tiêu Calo Hôm Nay',
+    unit: 'kcal',
+    consumedLabel: 'kcal đã ăn',
+    remainingLabel: 'kcal còn lại',
+    overLabel: 'kcal vượt mức',
+    statusOk: 'Hôm nay bạn đang giữ nhịp độ tốt. Cứ tiếp tục như vậy nhé.',
+    statusNear: 'Bạn sắp đạt mục tiêu rồi. Bữa tối nên ăn nhẹ nhàng thôi nhé?',
+    statusOver: 'Bạn đã vượt mục tiêu calo hôm nay.',
+    warning: '⚠ Chưa đến bữa tối mà bạn đã vượt mục tiêu rồi. Hãy cố gắng ăn tối nhẹ nhàng.',
+  },
+  nutrition: {
+    title: 'Cân Bằng Dinh Dưỡng',
+    empty: 'Chưa có dữ liệu dinh dưỡng nào được ghi lại.',
+    carbs: 'Carb',
+    protein: 'Đạm',
+    fat: 'Chất béo',
+    tipShortfall: (macro) => `Hôm nay bạn nên bổ sung thêm một chút ${macro}.`,
+    tipBalanced: 'Cân bằng dinh dưỡng hôm nay của bạn khá tốt.',
+  },
+  meals: {
+    title: (count) => `Bữa Ăn Hôm Nay (${count})`,
+    empty: 'Chưa có bữa ăn nào được ghi lại. Hãy tải ảnh lên để ghi bữa ăn đầu tiên.',
+    delete: 'Xóa',
+  },
+  coach: {
+    title: 'Huấn Luyện Viên Ăn Kiêng AI',
+    subtitle: 'Nhận gợi ý bữa tối và lời khuyên ăn kiêng dựa trên các bữa ăn hôm nay.',
+    askButton: 'Hỏi Nên Ăn Gì Cho Bữa Tối',
+    askAgainButton: 'Hỏi Lại',
+    loading: 'Huấn luyện viên đang suy nghĩ...',
+    dinnerLabel: '🍽 Gợi Ý Bữa Tối',
+    noteLabel: '💬 Lời Nhắn Từ Huấn Luyện Viên',
+  },
+  chooseLanguage: 'Chọn Ngôn Ngữ',
+};
+
+const zh: Strings = {
+  app: {
+    title: '今日饮食日记',
+    subtitle: '拍一张照片即可记录卡路里和营养,还能获得AI教练的晚餐建议。',
+  },
+  addCard: {
+    cameraButton: '拍照记录一餐',
+    galleryButton: '从相册选择',
+    helper: '* 卡路里和营养为AI估算值,可能与实际做法和分量有差异。',
+  },
+  errors: {
+    cameraPermission: '需要摄像头权限。请在浏览器或设备设置中允许访问。',
+    libraryPermission: '需要照片访问权限。请在浏览器或设备设置中允许访问。',
+    imageProcessFailed: '无法处理该图片。',
+    analyzeGeneric: '分析照片时出现问题。',
+    pickGeneric: '加载照片时出现问题。',
+    networkError: '无法连接服务器,请检查网络连接。',
+    rateLimited: '今日分析次数已达上限,请明天再试。',
+    analyzeFailed: '分析过程中出现问题,请稍后再试。',
+    coachFailed: '无法获取教练建议,请稍后再试。',
+  },
+  result: {
+    analyzing: '正在分析照片...',
+    retry: '重试',
+    totalCalories: '总卡路里',
+    macroLine: (p, f, c) => `蛋白质 ${p}g · 脂肪 ${f}g · 碳水 ${c}g`,
+    addToLog: '添加到今日记录',
+    tryAnotherPhoto: '分析其他照片',
+  },
+  summary: {
+    goalLabel: '今日目标卡路里',
+    unit: 'kcal',
+    consumedLabel: '已摄入 kcal',
+    remainingLabel: '剩余 kcal',
+    overLabel: '超出 kcal',
+    statusOk: '今天的节奏不错,继续保持吧。',
+    statusNear: '已经接近目标了,晚餐要不要吃清淡一点?',
+    statusOver: '今天已经超出目标卡路里了。',
+    warning: '⚠ 还没到晚餐时间就已经超出目标了,晚餐请尽量清淡。',
+  },
+  nutrition: {
+    title: '营养平衡',
+    empty: '暂无营养数据记录。',
+    carbs: '碳水',
+    protein: '蛋白质',
+    fat: '脂肪',
+    tipShortfall: (macro) => `今天的${macro}摄入似乎有点不足。`,
+    tipBalanced: '今天的营养平衡很不错。',
+  },
+  meals: {
+    title: (count) => `今日饮食 (${count})`,
+    empty: '还没有记录的饮食。上传照片记录第一餐吧。',
+    delete: '删除',
+  },
+  coach: {
+    title: 'AI饮食教练',
+    subtitle: '根据今日饮食获取晚餐建议和饮食指导。',
+    askButton: '问问晚餐该吃什么',
+    askAgainButton: '再问一次',
+    loading: '教练正在思考...',
+    dinnerLabel: '🍽 晚餐建议',
+    noteLabel: '💬 教练留言',
+  },
+  chooseLanguage: '选择语言',
+};
+
+const id: Strings = {
+  app: {
+    title: 'Buku Harian Diet Hari Ini',
+    subtitle: 'Foto makanan Anda untuk mencatat kalori dan nutrisi, dan dapatkan saran makan malam dari pelatih AI.',
+  },
+  addCard: {
+    cameraButton: 'Catat Makanan dengan Foto',
+    galleryButton: 'Pilih dari Galeri',
+    helper: '* Kalori dan nutrisi adalah perkiraan AI dan mungkin berbeda dari resep dan porsi sebenarnya.',
+  },
+  errors: {
+    cameraPermission: 'Izin kamera diperlukan. Silakan aktifkan di pengaturan browser atau perangkat Anda.',
+    libraryPermission: 'Izin akses foto diperlukan. Silakan aktifkan di pengaturan browser atau perangkat Anda.',
+    imageProcessFailed: 'Tidak dapat memproses gambar.',
+    analyzeGeneric: 'Terjadi masalah saat menganalisis foto.',
+    pickGeneric: 'Terjadi masalah saat memuat foto.',
+    networkError: 'Tidak dapat terhubung ke server. Silakan periksa koneksi internet Anda.',
+    rateLimited: 'Batas analisis hari ini telah tercapai. Silakan coba lagi besok.',
+    analyzeFailed: 'Terjadi masalah saat menganalisis. Silakan coba lagi beberapa saat lagi.',
+    coachFailed: 'Tidak dapat menerima saran dari pelatih. Silakan coba lagi beberapa saat lagi.',
+  },
+  result: {
+    analyzing: 'Sedang menganalisis foto Anda...',
+    retry: 'Coba Lagi',
+    totalCalories: 'Total Kalori',
+    macroLine: (p, f, c) => `Protein ${p}g · Lemak ${f}g · Karbo ${c}g`,
+    addToLog: 'Tambahkan ke Catatan Hari Ini',
+    tryAnotherPhoto: 'Analisis Foto Lain',
+  },
+  summary: {
+    goalLabel: 'Target Kalori Hari Ini',
+    unit: 'kcal',
+    consumedLabel: 'kcal dimakan',
+    remainingLabel: 'kcal tersisa',
+    overLabel: 'kcal berlebih',
+    statusOk: 'Ritme Anda hari ini bagus. Pertahankan terus.',
+    statusNear: 'Anda hampir mencapai target. Makan malam ringan saja?',
+    statusOver: 'Anda sudah melebihi target kalori hari ini.',
+    warning: '⚠ Belum makan malam tapi target sudah terlampaui. Usahakan makan malam yang ringan.',
+  },
+  nutrition: {
+    title: 'Keseimbangan Nutrisi',
+    empty: 'Belum ada data nutrisi yang tercatat.',
+    carbs: 'Karbo',
+    protein: 'Protein',
+    fat: 'Lemak',
+    tipShortfall: (macro) => `Asupan ${macro} Anda hari ini sepertinya masih kurang.`,
+    tipBalanced: 'Keseimbangan nutrisi Anda hari ini cukup baik.',
+  },
+  meals: {
+    title: (count) => `Makanan Hari Ini (${count})`,
+    empty: 'Belum ada makanan yang tercatat. Unggah foto untuk mencatat makanan pertama Anda.',
+    delete: 'Hapus',
+  },
+  coach: {
+    title: 'Pelatih Diet AI',
+    subtitle: 'Dapatkan saran makan malam dan panduan diet berdasarkan makanan hari ini.',
+    askButton: 'Tanya Menu Makan Malam',
+    askAgainButton: 'Tanya Lagi',
+    loading: 'Pelatih sedang berpikir...',
+    dinnerLabel: '🍽 Saran Makan Malam',
+    noteLabel: '💬 Catatan dari Pelatih',
+  },
+  chooseLanguage: 'Pilih Bahasa',
+};
+
+const tl: Strings = {
+  app: {
+    title: 'Talaarawan ng Diyeta Ngayong Araw',
+    subtitle: 'Kumuha ng larawan ng iyong pagkain para masubaybayan ang calories at nutrisyon, at makakuha ng payo sa hapunan mula sa AI coach.',
+  },
+  addCard: {
+    cameraButton: 'Itala ang Pagkain sa Pamamagitan ng Litrato',
+    galleryButton: 'Pumili mula sa Gallery',
+    helper: '* Ang calories at nutrisyon ay tantiya ng AI at maaaring iba sa aktwal na recipe at dami ng pagkain.',
+  },
+  errors: {
+    cameraPermission: 'Kailangan ang pahintulot sa camera. Paki-allow ito sa settings ng browser o device.',
+    libraryPermission: 'Kailangan ang pahintulot sa mga larawan. Paki-allow ito sa settings ng browser o device.',
+    imageProcessFailed: 'Hindi maproseso ang larawan.',
+    analyzeGeneric: 'May problemang naganap habang sinusuri ang larawan.',
+    pickGeneric: 'Nagkaroon ng problema sa pag-load ng larawan.',
+    networkError: 'Hindi makakonekta sa server. Paki-check ang iyong internet connection.',
+    rateLimited: 'Naabot na ang limitasyon ng pagsusuri para ngayong araw. Subukan muli bukas.',
+    analyzeFailed: 'May problemang naganap habang sinusuri. Subukan muli mamaya.',
+    coachFailed: 'Hindi makuha ang payo mula sa coach. Subukan muli mamaya.',
+  },
+  result: {
+    analyzing: 'Sinusuri ang iyong litrato...',
+    retry: 'Subukang Muli',
+    totalCalories: 'Kabuuang Calories',
+    macroLine: (p, f, c) => `Protina ${p}g · Taba ${f}g · Karbohidrat ${c}g`,
+    addToLog: 'Idagdag sa Talaan Ngayong Araw',
+    tryAnotherPhoto: 'Suriin ang Ibang Litrato',
+  },
+  summary: {
+    goalLabel: 'Target na Calories Ngayong Araw',
+    unit: 'kcal',
+    consumedLabel: 'kcal nakain',
+    remainingLabel: 'kcal natitira',
+    overLabel: 'kcal sobra',
+    statusOk: 'Maganda ang takbo mo ngayon. Ituloy mo lang.',
+    statusNear: 'Malapit ka na sa target mo. Baka gaanin na lang ang hapunan?',
+    statusOver: 'Nalagpasan mo na ang target na calories ngayong araw.',
+    warning: '⚠ Hindi pa oras ng hapunan pero nalagpasan mo na ang target. Subukang gaanin ang hapunan.',
+  },
+  nutrition: {
+    title: 'Balanse ng Nutrisyon',
+    empty: 'Wala pang naitalang nutrisyon.',
+    carbs: 'Karbohidrat',
+    protein: 'Protina',
+    fat: 'Taba',
+    tipShortfall: (macro) => `Mukhang kulang pa ang ${macro} mo ngayong araw.`,
+    tipBalanced: 'Maganda ang balanse ng nutrisyon mo ngayong araw.',
+  },
+  meals: {
+    title: (count) => `Mga Pagkain Ngayong Araw (${count})`,
+    empty: 'Wala pang naitalang pagkain. Mag-upload ng larawan para itala ang una mong pagkain.',
+    delete: 'Alisin',
+  },
+  coach: {
+    title: 'AI Diet Coach',
+    subtitle: 'Kumuha ng mungkahi sa hapunan at payo sa diyeta base sa mga pagkain ngayong araw.',
+    askButton: 'Itanong Kung Ano ang Kainin sa Hapunan',
+    askAgainButton: 'Magtanong Ulit',
+    loading: 'Iniisip pa ng coach...',
+    dinnerLabel: '🍽 Mungkahi sa Hapunan',
+    noteLabel: '💬 Mensahe ng Coach',
+  },
+  chooseLanguage: 'Pumili ng Wika',
+};
+
+const th: Strings = {
+  app: {
+    title: 'ไดอารี่ควบคุมอาหารวันนี้',
+    subtitle: 'ถ่ายรูปมื้ออาหารเพื่อบันทึกแคลอรี่และโภชนาการ พร้อมรับคำแนะนำมื้อเย็นจากโค้ช AI',
+  },
+  addCard: {
+    cameraButton: 'บันทึกมื้ออาหารด้วยรูปภาพ',
+    galleryButton: 'เลือกจากคลังภาพ',
+    helper: '* แคลอรี่และโภชนาการเป็นการประมาณโดย AI อาจแตกต่างจากสูตรและปริมาณจริง',
+  },
+  errors: {
+    cameraPermission: 'ต้องการสิทธิ์เข้าถึงกล้อง กรุณาอนุญาตในการตั้งค่าเบราว์เซอร์หรืออุปกรณ์',
+    libraryPermission: 'ต้องการสิทธิ์เข้าถึงรูปภาพ กรุณาอนุญาตในการตั้งค่าเบราว์เซอร์หรืออุปกรณ์',
+    imageProcessFailed: 'ไม่สามารถประมวลผลรูปภาพได้',
+    analyzeGeneric: 'เกิดปัญหาขณะวิเคราะห์รูปภาพ',
+    pickGeneric: 'เกิดปัญหาขณะโหลดรูปภาพ',
+    networkError: 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต',
+    rateLimited: 'ถึงขีดจำกัดการวิเคราะห์ของวันนี้แล้ว กรุณาลองใหม่พรุ่งนี้',
+    analyzeFailed: 'เกิดปัญหาระหว่างการวิเคราะห์ กรุณาลองใหม่อีกครั้งในภายหลัง',
+    coachFailed: 'ไม่สามารถรับคำแนะนำจากโค้ชได้ กรุณาลองใหม่อีกครั้งในภายหลัง',
+  },
+  result: {
+    analyzing: 'กำลังวิเคราะห์รูปภาพของคุณ...',
+    retry: 'ลองอีกครั้ง',
+    totalCalories: 'แคลอรี่รวม',
+    macroLine: (p, f, c) => `โปรตีน ${p}g · ไขมัน ${f}g · คาร์บ ${c}g`,
+    addToLog: 'เพิ่มลงบันทึกวันนี้',
+    tryAnotherPhoto: 'วิเคราะห์รูปภาพอื่น',
+  },
+  summary: {
+    goalLabel: 'เป้าหมายแคลอรี่วันนี้',
+    unit: 'kcal',
+    consumedLabel: 'kcal ที่กินไป',
+    remainingLabel: 'kcal ที่เหลือ',
+    overLabel: 'kcal ที่เกิน',
+    statusOk: 'วันนี้จังหวะดีอยู่ ลองรักษาแบบนี้ต่อไปนะ',
+    statusNear: 'ใกล้ถึงเป้าหมายแล้ว มื้อเย็นลองกินเบาๆ ดีไหม?',
+    statusOver: 'วันนี้เกินเป้าหมายแคลอรี่แล้ว',
+    warning: '⚠ ยังไม่ถึงมื้อเย็นแต่เกินเป้าหมายไปแล้ว ลองกินมื้อเย็นให้เบาลงนะ',
+  },
+  nutrition: {
+    title: 'สมดุลโภชนาการ',
+    empty: 'ยังไม่มีข้อมูลโภชนาการที่บันทึกไว้',
+    carbs: 'คาร์บ',
+    protein: 'โปรตีน',
+    fat: 'ไขมัน',
+    tipShortfall: (macro) => `วันนี้ดูเหมือนจะได้รับ${macro}ค่อนข้างน้อยนะ`,
+    tipBalanced: 'สมดุลโภชนาการวันนี้ดูดีนะ',
+  },
+  meals: {
+    title: (count) => `มื้ออาหารวันนี้ (${count})`,
+    empty: 'ยังไม่มีมื้ออาหารที่บันทึกไว้ อัปโหลดรูปภาพเพื่อบันทึกมื้อแรกของคุณ',
+    delete: 'ลบ',
+  },
+  coach: {
+    title: 'โค้ชควบคุมอาหาร AI',
+    subtitle: 'รับคำแนะนำมื้อเย็นและคำแนะนำการควบคุมอาหารจากมื้ออาหารวันนี้',
+    askButton: 'ถามว่ามื้อเย็นควรกินอะไร',
+    askAgainButton: 'ถามอีกครั้ง',
+    loading: 'โค้ชกำลังคิดอยู่...',
+    dinnerLabel: '🍽 คำแนะนำมื้อเย็น',
+    noteLabel: '💬 ข้อความจากโค้ช',
+  },
+  chooseLanguage: 'เลือกภาษา',
+};
+
+const my: Strings = {
+  app: {
+    title: 'ယနေ့ အစားအသောက် မှတ်တမ်း',
+    subtitle: 'အစားအစာ ဓာတ်ပုံရိုက်ပြီး ကယ်လိုရီနှင့် အာဟာရကို မှတ်တမ်းတင်ကာ AI နည်းပြထံမှ ညစာ အကြံဉာဏ်ရယူပါ။',
+  },
+  addCard: {
+    cameraButton: 'ဓာတ်ပုံဖြင့် အစားအစာ မှတ်တမ်းတင်ရန်',
+    galleryButton: 'ပြခန်းမှ ရွေးရန်',
+    helper: '* ကယ်လိုရီနှင့် အာဟာရသည် AI ခန့်မှန်းချက်ဖြစ်ပြီး၊ အမှန်တကယ် ချက်ပြုတ်နည်းနှင့် ပမာဏနှင့် ကွာခြားနိုင်ပါသည်။',
+  },
+  errors: {
+    cameraPermission: 'ကင်မရာခွင့်ပြုချက် လိုအပ်ပါသည်။ ဘရောက်ဇာ သို့မဟုတ် စက်ပစ္စည်း ဆက်တင်တွင် ခွင့်ပြုပေးပါ။',
+    libraryPermission: 'ဓာတ်ပုံခွင့်ပြုချက် လိုအပ်ပါသည်။ ဘရောက်ဇာ သို့မဟုတ် စက်ပစ္စည်း ဆက်တင်တွင် ခွင့်ပြုပေးပါ။',
+    imageProcessFailed: 'ပုံကို လုပ်ဆောင်၍ မရပါ။',
+    analyzeGeneric: 'ဓာတ်ပုံ စိစစ်နေစဉ် ပြဿနာ ဖြစ်ပွားခဲ့ပါသည်။',
+    pickGeneric: 'ဓာတ်ပုံ ဖွင့်ရာတွင် ပြဿနာ ဖြစ်ပွားခဲ့ပါသည်။',
+    networkError: 'ဆာဗာသို့ ချိတ်ဆက်၍ မရပါ။ အင်တာနက် ချိတ်ဆက်မှုကို စစ်ဆေးပါ။',
+    rateLimited: 'ယနေ့အတွက် စိစစ်နိုင်သည့် အကြိမ်ရေ ပြည့်သွားပါပြီ။ မနက်ဖြန် ထပ်မံ ကြိုးစားပါ။',
+    analyzeFailed: 'စိစစ်နေစဉ် ပြဿနာ ဖြစ်ပွားခဲ့ပါသည်။ ခဏနေ ထပ်စမ်းကြည့်ပါ။',
+    coachFailed: 'နည်းပြထံမှ အကြံဉာဏ် မရယူနိုင်ပါ။ ခဏနေ ထပ်စမ်းကြည့်ပါ။',
+  },
+  result: {
+    analyzing: 'သင့်ဓာတ်ပုံကို စိစစ်နေပါသည်...',
+    retry: 'ထပ်စမ်းကြည့်ပါ',
+    totalCalories: 'စုစုပေါင်း ကယ်လိုရီ',
+    macroLine: (p, f, c) => `ပရိုတိန်း ${p}g · အဆီ ${f}g · ကာဗိုဟိုက်ဒရိတ် ${c}g`,
+    addToLog: 'ယနေ့ မှတ်တမ်းသို့ ထည့်ရန်',
+    tryAnotherPhoto: 'အခြားပုံတစ်ပုံ စိစစ်ရန်',
+  },
+  summary: {
+    goalLabel: 'ယနေ့ ကယ်လိုရီ ပန်းတိုင်',
+    unit: 'kcal',
+    consumedLabel: 'စားပြီး kcal',
+    remainingLabel: 'ကျန်ရှိ kcal',
+    overLabel: 'ကျော်လွန် kcal',
+    statusOk: 'ယနေ့ အရှိန်ကောင်းနေပါသည်။ ဒီအတိုင်း ဆက်လုပ်ပါ။',
+    statusNear: 'ပန်းတိုင်နီးလာပါပြီ။ ညစာ ပေါ့ပေါ့ပါးပါး စားကြည့်မလား?',
+    statusOver: 'ယနေ့ ကယ်လိုရီ ပန်းတိုင်ကို ကျော်လွန်သွားပါပြီ။',
+    warning: '⚠ ညစာ မစားရသေးဘဲ ပန်းတိုင်ကို ကျော်လွန်သွားပါပြီ။ ညစာကို ပေါ့ပေါ့ပါးပါး ချိန်ညှိပါ။',
+  },
+  nutrition: {
+    title: 'အာဟာရ ဟန်ချက်',
+    empty: 'အာဟာရ အချက်အလက် မှတ်တမ်း မရှိသေးပါ။',
+    carbs: 'ကာဗိုဟိုက်ဒရိတ်',
+    protein: 'ပရိုတိန်း',
+    fat: 'အဆီ',
+    tipShortfall: (macro) => `ယနေ့ ${macro} နည်းနည်း လိုအပ်နေပုံရပါသည်။`,
+    tipBalanced: 'ယနေ့ အာဟာရ ဟန်ချက် ကောင်းမွန်ပါသည်။',
+  },
+  meals: {
+    title: (count) => `ယနေ့ အစားအစာများ (${count})`,
+    empty: 'အစားအစာ မှတ်တမ်း မရှိသေးပါ။ ပထမဆုံး အစားအစာကို မှတ်တမ်းတင်ရန် ဓာတ်ပုံ တင်ပါ။',
+    delete: 'ဖျက်ရန်',
+  },
+  coach: {
+    title: 'AI အစားအသောက် နည်းပြ',
+    subtitle: 'ယနေ့ အစားအစာများအပေါ် အခြေခံ၍ ညစာ အကြံပြုချက်နှင့် အစားအသောက် အကြံဉာဏ် ရယူပါ။',
+    askButton: 'ညစာ ဘာစားရမလဲ မေးရန်',
+    askAgainButton: 'ထပ်မေးရန်',
+    loading: 'နည်းပြ စဉ်းစားနေပါသည်...',
+    dinnerLabel: '🍽 ညစာ အကြံပြုချက်',
+    noteLabel: '💬 နည်းပြ၏ စကားစုံ',
+  },
+  chooseLanguage: 'ဘာသာစကား ရွေးရန်',
+};
+
+const ne: Strings = {
+  app: {
+    title: 'आजको डाइट डायरी',
+    subtitle: 'क्यालोरी र पोषण रेकर्ड गर्न आफ्नो खानाको फोटो खिच्नुहोस्, र AI कोचबाट डिनरको सल्लाह पाउनुहोस्।',
+  },
+  addCard: {
+    cameraButton: 'फोटोबाट खाना रेकर्ड गर्नुहोस्',
+    galleryButton: 'ग्यालरीबाट छान्नुहोस्',
+    helper: '* क्यालोरी र पोषण AI को अनुमान हो, वास्तविक रेसिपी र मात्राभन्दा फरक हुन सक्छ।',
+  },
+  errors: {
+    cameraPermission: 'क्यामेरा अनुमति आवश्यक छ। कृपया ब्राउजर वा उपकरणको सेटिङमा अनुमति दिनुहोस्।',
+    libraryPermission: 'फोटो पहुँच अनुमति आवश्यक छ। कृपया ब्राउजर वा उपकरणको सेटिङमा अनुमति दिनुहोस्।',
+    imageProcessFailed: 'तस्बिर प्रशोधन गर्न सकिएन।',
+    analyzeGeneric: 'फोटो विश्लेषण गर्दा समस्या भयो।',
+    pickGeneric: 'फोटो लोड गर्दा समस्या भयो।',
+    networkError: 'सर्भरसँग जडान गर्न सकिएन। कृपया आफ्नो इन्टरनेट जडान जाँच गर्नुहोस्।',
+    rateLimited: 'आजको विश्लेषण सीमा पुगिसक्यो। कृपया भोलि फेरि प्रयास गर्नुहोस्।',
+    analyzeFailed: 'विश्लेषण गर्दा समस्या भयो। कृपया केही समयपछि फेरि प्रयास गर्नुहोस्।',
+    coachFailed: 'कोचबाट सल्लाह पाउन सकिएन। कृपया केही समयपछि फेरि प्रयास गर्नुहोस्।',
+  },
+  result: {
+    analyzing: 'तपाईंको फोटो विश्लेषण गर्दै...',
+    retry: 'फेरि प्रयास गर्नुहोस्',
+    totalCalories: 'कुल क्यालोरी',
+    macroLine: (p, f, c) => `प्रोटिन ${p}g · बोसो ${f}g · कार्ब ${c}g`,
+    addToLog: 'आजको रेकर्डमा थप्नुहोस्',
+    tryAnotherPhoto: 'अर्को फोटो विश्लेषण गर्नुहोस्',
+  },
+  summary: {
+    goalLabel: 'आजको क्यालोरी लक्ष्य',
+    unit: 'kcal',
+    consumedLabel: 'खाइयो kcal',
+    remainingLabel: 'बाँकी kcal',
+    overLabel: 'बढी kcal',
+    statusOk: 'आज तपाईंको गति राम्रो छ। यसैगरी जारी राख्नुहोस्।',
+    statusNear: 'तपाईं लक्ष्यको नजिक पुग्नुभयो। डिनर हल्का खाने हो?',
+    statusOver: 'आज तपाईंले क्यालोरी लक्ष्य नाघ्नुभयो।',
+    warning: '⚠ अझै डिनर भएको छैन तर लक्ष्य नाघिसकियो। डिनर हल्का राख्ने प्रयास गर्नुहोस्।',
+  },
+  nutrition: {
+    title: 'पोषण सन्तुलन',
+    empty: 'अहिलेसम्म कुनै पोषण डाटा रेकर्ड गरिएको छैन।',
+    carbs: 'कार्ब',
+    protein: 'प्रोटिन',
+    fat: 'बोसो',
+    tipShortfall: (macro) => `आज तपाईंलाई अलि थप ${macro} चाहिन्छ जस्तो देखिन्छ।`,
+    tipBalanced: 'आजको पोषण सन्तुलन राम्रो देखिन्छ।',
+  },
+  meals: {
+    title: (count) => `आजका खानाहरू (${count})`,
+    empty: 'अहिलेसम्म कुनै खाना रेकर्ड गरिएको छैन। पहिलो खाना रेकर्ड गर्न फोटो अपलोड गर्नुहोस्।',
+    delete: 'मेटाउनुहोस्',
+  },
+  coach: {
+    title: 'AI डाइट कोच',
+    subtitle: 'आजको खानाको आधारमा डिनर सुझाव र डाइट सल्लाह पाउनुहोस्।',
+    askButton: 'डिनरमा के खाने भनेर सोध्नुहोस्',
+    askAgainButton: 'फेरि सोध्नुहोस्',
+    loading: 'कोच सोच्दै हुनुहुन्छ...',
+    dinnerLabel: '🍽 डिनर सुझाव',
+    noteLabel: '💬 कोचको सन्देश',
+  },
+  chooseLanguage: 'भाषा छान्नुहोस्',
+};
+
+const pt: Strings = {
+  app: {
+    title: 'Diário de Dieta de Hoje',
+    subtitle: 'Tire uma foto da sua refeição para registrar calorias e nutrição, e receba conselhos de jantar do seu coach de IA.',
+  },
+  addCard: {
+    cameraButton: 'Registrar Refeição por Foto',
+    galleryButton: 'Escolher da Galeria',
+    helper: '* Calorias e nutrição são estimativas de IA e podem variar da receita e porção reais.',
+  },
+  errors: {
+    cameraPermission: 'É necessária permissão da câmera. Permita nas configurações do navegador ou do dispositivo.',
+    libraryPermission: 'É necessária permissão de acesso às fotos. Permita nas configurações do navegador ou do dispositivo.',
+    imageProcessFailed: 'Não foi possível processar a imagem.',
+    analyzeGeneric: 'Ocorreu um problema ao analisar a foto.',
+    pickGeneric: 'Ocorreu um problema ao carregar a foto.',
+    networkError: 'Não foi possível conectar ao servidor. Verifique sua conexão com a internet.',
+    rateLimited: 'O limite de análises de hoje foi atingido. Tente novamente amanhã.',
+    analyzeFailed: 'Ocorreu um problema durante a análise. Tente novamente em instantes.',
+    coachFailed: 'Não foi possível obter o conselho do coach. Tente novamente em instantes.',
+  },
+  result: {
+    analyzing: 'Analisando sua foto...',
+    retry: 'Tentar Novamente',
+    totalCalories: 'Calorias Totais',
+    macroLine: (p, f, c) => `Proteína ${p}g · Gordura ${f}g · Carboidratos ${c}g`,
+    addToLog: 'Adicionar ao Registro de Hoje',
+    tryAnotherPhoto: 'Analisar Outra Foto',
+  },
+  summary: {
+    goalLabel: 'Meta de Calorias de Hoje',
+    unit: 'kcal',
+    consumedLabel: 'kcal consumidas',
+    remainingLabel: 'kcal restantes',
+    overLabel: 'kcal acima',
+    statusOk: 'Seu ritmo hoje está bom. Continue assim.',
+    statusNear: 'Você está quase na meta. Que tal um jantar mais leve?',
+    statusOver: 'Você ultrapassou a meta de calorias de hoje.',
+    warning: '⚠ Ainda nem chegou a hora do jantar e você já ultrapassou a meta. Tente um jantar mais leve.',
+  },
+  nutrition: {
+    title: 'Equilíbrio Nutricional',
+    empty: 'Nenhum dado nutricional registrado ainda.',
+    carbs: 'Carboidratos',
+    protein: 'Proteína',
+    fat: 'Gordura',
+    tipShortfall: (macro) => `Hoje você poderia consumir um pouco mais de ${macro}.`,
+    tipBalanced: 'Seu equilíbrio nutricional hoje está bom.',
+  },
+  meals: {
+    title: (count) => `Refeições de Hoje (${count})`,
+    empty: 'Nenhuma refeição registrada ainda. Envie uma foto para registrar sua primeira refeição.',
+    delete: 'Excluir',
+  },
+  coach: {
+    title: 'Coach de Dieta com IA',
+    subtitle: 'Receba sugestões de jantar e conselhos de dieta com base nas refeições de hoje.',
+    askButton: 'Perguntar o Que Comer no Jantar',
+    askAgainButton: 'Perguntar Novamente',
+    loading: 'O coach está pensando...',
+    dinnerLabel: '🍽 Sugestão de Jantar',
+    noteLabel: '💬 Recado do Coach',
+  },
+  chooseLanguage: 'Escolher Idioma',
+};
+
+export const STRINGS: Record<Lang, Strings> = { ja, ko, en, vi, zh, id, tl, th, my, ne, pt };
+
+const BROWSER_LANG_MAP: Record<string, Lang> = {
+  ja: 'ja',
+  ko: 'ko',
+  en: 'en',
+  vi: 'vi',
+  zh: 'zh',
+  id: 'id',
+  tl: 'tl',
+  fil: 'tl',
+  th: 'th',
+  my: 'my',
+  ne: 'ne',
+  pt: 'pt',
+};
 
 export function detectDefaultLang(): Lang {
   if (typeof navigator !== 'undefined' && typeof navigator.language === 'string') {
-    return navigator.language.toLowerCase().startsWith('ja') ? 'ja' : 'ko';
+    const prefix = navigator.language.toLowerCase().split('-')[0];
+    return BROWSER_LANG_MAP[prefix] ?? 'en';
   }
-  return 'ko';
+  return 'en';
 }

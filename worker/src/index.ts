@@ -15,12 +15,21 @@ const MODEL = 'claude-haiku-4-5';
 const ALLOWED_MEDIA_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 const LANGUAGE_NAMES: Record<string, string> = {
-  ko: 'Korean (한국어)',
   ja: 'Japanese (日本語)',
+  ko: 'Korean (한국어)',
+  en: 'English',
+  vi: 'Vietnamese (Tiếng Việt)',
+  zh: 'Chinese (中文)',
+  id: 'Indonesian (Bahasa Indonesia)',
+  tl: 'Filipino (Tagalog)',
+  th: 'Thai (ภาษาไทย)',
+  my: 'Burmese (မြန်မာ)',
+  ne: 'Nepali (नेपाली)',
+  pt: 'Portuguese (Português)',
 };
 
 function resolveLang(value: unknown): string {
-  return value === 'ja' ? 'ja' : 'ko';
+  return typeof value === 'string' && value in LANGUAGE_NAMES ? value : 'en';
 }
 
 const ANALYSIS_SCHEMA = {

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  FlatList,
   Image,
   ScrollView,
   StyleSheet,
@@ -19,6 +20,7 @@ import { COLORS, RADIUS, SPACING } from '../constants/theme';
 import { AnalyzeError, analyzeFoodPhoto, getCoachAdvice } from '../lib/api';
 import { detectDefaultLang, STRINGS } from '../lib/i18n';
 import { loadGoalCalories, loadLang, loadTodayLog, saveGoalCalories, saveLang, saveTodayLog } from '../lib/storage';
+import { LANGUAGES } from '../types';
 import type { AnalysisResult, CoachAdvice, DietStatus, Lang, MealEntry } from '../types';
 
 const NEAR_GOAL_RATIO = 0.9;
@@ -26,7 +28,8 @@ const DINNER_HOUR = 18;
 
 export default function HomeScreen() {
   const [hydrated, setHydrated] = useState(false);
-  const [lang, setLang] = useState<Lang>('ko');
+  const [lang, setLang] = useState<Lang>('en');
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [goal, setGoal] = useState(1800);
   const [meals, setMeals] = useState<MealEntry[]>([]);
 
@@ -40,6 +43,7 @@ export default function HomeScreen() {
   const [coachError, setCoachError] = useState<string | null>(null);
 
   const t = STRINGS[lang];
+  const currentLanguage = LANGUAGES.find((l) => l.code === lang) ?? LANGUAGES[0];
 
   // Load persisted goal + today's log + language once on mount. The save
   // effects below are gated on `hydrated` so they can't fire with the empty
@@ -188,24 +192,46 @@ export default function HomeScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.langRow}>
-        <TouchableOpacity
-          style={[styles.langPill, lang === 'ko' && styles.langPillActive]}
-          onPress={() => setLang('ko')}
-        >
-          <Text style={[styles.langPillText, lang === 'ko' && styles.langPillTextActive]}>
-            {t.langToggle.ko}
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.langPill, lang === 'ja' && styles.langPillActive]}
-          onPress={() => setLang('ja')}
-        >
-          <Text style={[styles.langPillText, lang === 'ja' && styles.langPillTextActive]}>
-            {t.langToggle.ja}
-          </Text>
-        </TouchableOpacity>
-      </View>
+      <TouchableOpacity
+        style={styles.langSwitch}
+        onPress={() => setPickerOpen(true)}
+        accessibilityRole="button"
+        accessibilityLabel={t.chooseLanguage}
+      >
+        <Text style={styles.langSwitchText}>{currentLanguage.native} ▾</Text>
+      </TouchableOpacity>
+
+      {pickerOpen && (
+        <View style={styles.modalBackdrop}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={() => setPickerOpen(false)}
+          />
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>{t.chooseLanguage}</Text>
+            <FlatList
+              data={LANGUAGES}
+              keyExtractor={(item) => item.code}
+              style={styles.modalList}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[styles.langOption, item.code === lang && styles.langOptionActive]}
+                  onPress={() => {
+                    setLang(item.code);
+                    setPickerOpen(false);
+                  }}
+                >
+                  <Text style={[styles.langOptionNative, item.code === lang && styles.langOptionActiveText]}>
+                    {item.native}
+                  </Text>
+                  <Text style={styles.langOptionEnglish}>{item.english}</Text>
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </View>
+      )}
 
       <Text style={styles.title}>{t.app.title}</Text>
       <Text style={styles.subtitle}>{t.app.subtitle}</Text>
@@ -325,27 +351,71 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     gap: SPACING.md,
   },
-  langRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: SPACING.xs,
-  },
-  langPill: {
+  langSwitch: {
+    alignSelf: 'center',
+    paddingVertical: SPACING.xs,
     paddingHorizontal: SPACING.md,
-    paddingVertical: 6,
     borderRadius: RADIUS.pill,
     backgroundColor: COLORS.chipBg,
   },
-  langPillActive: {
-    backgroundColor: COLORS.primary,
-  },
-  langPillText: {
-    fontSize: 12,
+  langSwitchText: {
+    color: COLORS.primaryDark,
     fontWeight: '700',
-    color: COLORS.textMuted,
+    fontSize: 13,
   },
-  langPillTextActive: {
-    color: '#FFFFFF',
+  modalBackdrop: {
+    position: 'fixed' as 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1000,
+    backgroundColor: 'rgba(20,24,22,0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: SPACING.lg,
+  },
+  modalCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.md,
+    width: '100%',
+    maxWidth: 360,
+    maxHeight: '80%',
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: COLORS.text,
+    marginBottom: SPACING.sm,
+    paddingHorizontal: SPACING.sm,
+  },
+  modalList: {
+    flexGrow: 0,
+  },
+  langOption: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    paddingVertical: SPACING.sm + 2,
+    paddingHorizontal: SPACING.sm,
+    borderRadius: RADIUS.sm,
+  },
+  langOptionActive: {
+    backgroundColor: COLORS.chipBg,
+  },
+  langOptionNative: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  langOptionActiveText: {
+    color: COLORS.primaryDark,
+    fontWeight: '800',
+  },
+  langOptionEnglish: {
+    fontSize: 12,
+    color: COLORS.textMuted,
   },
   title: {
     fontSize: 26,
