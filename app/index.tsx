@@ -15,13 +15,24 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import CoachCard from '../components/CoachCard';
 import MealList from '../components/MealList';
 import NutritionBalance from '../components/NutritionBalance';
+import ProfileSetup from '../components/ProfileSetup';
 import SummaryCard from '../components/SummaryCard';
 import { COLORS, RADIUS, SPACING } from '../constants/theme';
 import { AnalyzeError, analyzeFoodPhoto, getCoachAdvice } from '../lib/api';
 import { detectDefaultLang, STRINGS } from '../lib/i18n';
-import { loadGoalCalories, loadLang, loadTodayLog, saveGoalCalories, saveLang, saveTodayLog } from '../lib/storage';
+import {
+  loadGoalCalories,
+  loadLang,
+  loadProfile,
+  loadTodayLog,
+  saveGoalCalories,
+  saveLang,
+  saveProfile,
+  saveTodayLog,
+} from '../lib/storage';
+import { calculateGoalCalories } from '../lib/tdee';
 import { LANGUAGES } from '../types';
-import type { AnalysisResult, CoachAdvice, DietStatus, Lang, MealEntry } from '../types';
+import type { AnalysisResult, CoachAdvice, DietStatus, Lang, MealEntry, UserProfile } from '../types';
 
 const NEAR_GOAL_RATIO = 0.9;
 const DINNER_HOUR = 18;
@@ -32,6 +43,8 @@ export default function HomeScreen() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [goal, setGoal] = useState(1800);
   const [meals, setMeals] = useState<MealEntry[]>([]);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [editingProfile, setEditingProfile] = useState(false);
 
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
@@ -50,14 +63,16 @@ export default function HomeScreen() {
   // initial state and clobber what's already in storage before this finishes.
   useEffect(() => {
     (async () => {
-      const [loadedGoal, loadedMeals, loadedLang] = await Promise.all([
+      const [loadedGoal, loadedMeals, loadedLang, loadedProfile] = await Promise.all([
         loadGoalCalories(),
         loadTodayLog(),
         loadLang(),
+        loadProfile(),
       ]);
       setGoal(loadedGoal);
       setMeals(loadedMeals);
       setLang(loadedLang ?? detectDefaultLang());
+      setProfile(loadedProfile);
       setHydrated(true);
     })();
   }, []);
@@ -76,6 +91,11 @@ export default function HomeScreen() {
     if (!hydrated) return;
     saveLang(lang);
   }, [lang, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated || !profile) return;
+    saveProfile(profile);
+  }, [profile, hydrated]);
 
   // AI-generated coach advice and error text are captured in whatever language was
   // active when they were fetched — they don't retroactively translate. Clear them on
@@ -180,6 +200,12 @@ export default function HomeScreen() {
     setMeals((prev) => prev.filter((m) => m.id !== id));
   }
 
+  function handleProfileSubmit(newProfile: UserProfile) {
+    setProfile(newProfile);
+    setGoal(calculateGoalCalories(newProfile));
+    setEditingProfile(false);
+  }
+
   async function requestCoachAdvice() {
     setCoachLoading(true);
     setCoachError(null);
@@ -192,6 +218,7 @@ export default function HomeScreen() {
         nutrients: nutrientTotals,
         meals: meals.map((m) => ({ dishName: m.dishName, calories: m.totalCalories })),
         lang,
+        dietGoal: profile?.goalRate ?? 'maintain',
       });
       setCoachAdvice(advice);
     } catch (e) {
@@ -244,107 +271,123 @@ export default function HomeScreen() {
         </View>
       )}
 
-      <Text style={styles.title}>{t.app.title}</Text>
-      <Text style={styles.subtitle}>{t.app.subtitle}</Text>
-
-      {!imageUri && (
-        <>
-          <SummaryCard
-            goal={goal}
-            onGoalChange={setGoal}
-            consumed={consumed}
-            remaining={remaining}
-            status={status}
-            overWarning={overWarning}
-            t={t}
-          />
-
-          <View style={styles.addCard}>
-            <TouchableOpacity style={styles.primaryButton} onPress={() => handlePick('camera')}>
-              <Text style={styles.primaryButtonText}>{t.addCard.cameraButton}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.secondaryButton} onPress={() => handlePick('library')}>
-              <Text style={styles.secondaryButtonText}>{t.addCard.galleryButton}</Text>
-            </TouchableOpacity>
-            <Text style={styles.helperText}>{t.addCard.helper}</Text>
-          </View>
-
-          <MealList meals={meals} onDelete={deleteMeal} lang={lang} t={t} />
-          <NutritionBalance nutrients={nutrientTotals} t={t} />
-          <CoachCard
-            advice={coachAdvice}
-            loading={coachLoading}
-            errorMsg={coachError}
-            onRequest={requestCoachAdvice}
-            t={t}
-          />
-        </>
+      {hydrated && (!profile || editingProfile) && (
+        <ProfileSetup
+          t={t}
+          initialProfile={profile ?? undefined}
+          onSubmit={handleProfileSubmit}
+          onCancel={profile ? () => setEditingProfile(false) : undefined}
+        />
       )}
 
-      {imageUri && (
-        <View style={styles.resultCard}>
-          <Image source={{ uri: imageUri }} style={styles.preview} resizeMode="cover" />
+      {hydrated && profile && !editingProfile && (
+        <>
+          <Text style={styles.title}>{t.app.title}</Text>
+          <Text style={styles.subtitle}>{t.app.subtitle}</Text>
 
-          {analyzing && (
-            <View style={styles.centerBlock}>
-              <ActivityIndicator color={COLORS.primary} size="large" />
-              <Text style={styles.loadingText}>{t.result.analyzing}</Text>
-            </View>
-          )}
-
-          {!analyzing && errorMsg && (
-            <View style={styles.centerBlock}>
-              <Text style={styles.errorText}>{errorMsg}</Text>
-              <TouchableOpacity style={styles.primaryButton} onPress={() => analyze(imageUri)}>
-                <Text style={styles.primaryButtonText}>{t.result.retry}</Text>
+          {!imageUri && (
+            <>
+              <SummaryCard
+                goal={goal}
+                onGoalChange={setGoal}
+                consumed={consumed}
+                remaining={remaining}
+                status={status}
+                overWarning={overWarning}
+                t={t}
+              />
+              <TouchableOpacity style={styles.editProfileLink} onPress={() => setEditingProfile(true)}>
+                <Text style={styles.editProfileLinkText}>{t.profile.editLink}</Text>
               </TouchableOpacity>
-            </View>
-          )}
 
-          {!analyzing && !errorMsg && result && (
-            <View style={styles.analysisBlock}>
-              <Text style={styles.dishName}>{result.dishName}</Text>
-
-              {result.items.map((item, index) => (
-                <View
-                  key={`${item.name}-${index}`}
-                  style={[styles.itemRow, index === 0 && styles.itemRowFirst]}
-                >
-                  <View style={styles.itemInfo}>
-                    <Text style={styles.itemName}>{item.name}</Text>
-                    <Text style={styles.itemPortion}>{item.estimatedPortion}</Text>
-                  </View>
-                  <Text style={styles.itemCalories}>{item.calories} kcal</Text>
-                </View>
-              ))}
-
-              <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>{t.result.totalCalories}</Text>
-                <Text style={styles.totalValue}>{result.totalCalories} kcal</Text>
+              <View style={styles.addCard}>
+                <TouchableOpacity style={styles.primaryButton} onPress={() => handlePick('camera')}>
+                  <Text style={styles.primaryButtonText}>{t.addCard.cameraButton}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.secondaryButton} onPress={() => handlePick('library')}>
+                  <Text style={styles.secondaryButtonText}>{t.addCard.galleryButton}</Text>
+                </TouchableOpacity>
+                <Text style={styles.helperText}>{t.addCard.helper}</Text>
               </View>
 
-              <Text style={styles.macroLine}>
-                {t.result.macroLine(
-                  Math.round(result.nutrients.protein),
-                  Math.round(result.nutrients.fat),
-                  Math.round(result.nutrients.carbs)
-                )}
-              </Text>
+              <MealList meals={meals} onDelete={deleteMeal} lang={lang} t={t} />
+              <NutritionBalance nutrients={nutrientTotals} t={t} />
+              <CoachCard
+                advice={coachAdvice}
+                loading={coachLoading}
+                errorMsg={coachError}
+                onRequest={requestCoachAdvice}
+                t={t}
+              />
+            </>
+          )}
 
-              {!!result.confidenceNote && (
-                <Text style={styles.confidenceNote}>{result.confidenceNote}</Text>
+          {imageUri && (
+            <View style={styles.resultCard}>
+              <Image source={{ uri: imageUri }} style={styles.preview} resizeMode="cover" />
+
+              {analyzing && (
+                <View style={styles.centerBlock}>
+                  <ActivityIndicator color={COLORS.primary} size="large" />
+                  <Text style={styles.loadingText}>{t.result.analyzing}</Text>
+                </View>
               )}
 
-              <TouchableOpacity style={styles.primaryButton} onPress={confirmAddMeal}>
-                <Text style={styles.primaryButtonText}>{t.result.addToLog}</Text>
+              {!analyzing && errorMsg && (
+                <View style={styles.centerBlock}>
+                  <Text style={styles.errorText}>{errorMsg}</Text>
+                  <TouchableOpacity style={styles.primaryButton} onPress={() => analyze(imageUri)}>
+                    <Text style={styles.primaryButtonText}>{t.result.retry}</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {!analyzing && !errorMsg && result && (
+                <View style={styles.analysisBlock}>
+                  <Text style={styles.dishName}>{result.dishName}</Text>
+
+                  {result.items.map((item, index) => (
+                    <View
+                      key={`${item.name}-${index}`}
+                      style={[styles.itemRow, index === 0 && styles.itemRowFirst]}
+                    >
+                      <View style={styles.itemInfo}>
+                        <Text style={styles.itemName}>{item.name}</Text>
+                        <Text style={styles.itemPortion}>{item.estimatedPortion}</Text>
+                      </View>
+                      <Text style={styles.itemCalories}>{item.calories} kcal</Text>
+                    </View>
+                  ))}
+
+                  <View style={styles.totalRow}>
+                    <Text style={styles.totalLabel}>{t.result.totalCalories}</Text>
+                    <Text style={styles.totalValue}>{result.totalCalories} kcal</Text>
+                  </View>
+
+                  <Text style={styles.macroLine}>
+                    {t.result.macroLine(
+                      Math.round(result.nutrients.protein),
+                      Math.round(result.nutrients.fat),
+                      Math.round(result.nutrients.carbs)
+                    )}
+                  </Text>
+
+                  {!!result.confidenceNote && (
+                    <Text style={styles.confidenceNote}>{result.confidenceNote}</Text>
+                  )}
+
+                  <TouchableOpacity style={styles.primaryButton} onPress={confirmAddMeal}>
+                    <Text style={styles.primaryButtonText}>{t.result.addToLog}</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              <TouchableOpacity style={styles.secondaryButton} onPress={cancelPick}>
+                <Text style={styles.secondaryButtonText}>{t.result.tryAnotherPhoto}</Text>
               </TouchableOpacity>
             </View>
           )}
-
-          <TouchableOpacity style={styles.secondaryButton} onPress={cancelPick}>
-            <Text style={styles.secondaryButtonText}>{t.result.tryAnotherPhoto}</Text>
-          </TouchableOpacity>
-        </View>
+        </>
       )}
     </ScrollView>
   );
@@ -440,6 +483,16 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: SPACING.xs,
     marginBottom: SPACING.xs,
+  },
+  editProfileLink: {
+    alignSelf: 'center',
+    paddingVertical: SPACING.xs,
+  },
+  editProfileLinkText: {
+    color: COLORS.textMuted,
+    fontSize: 12,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
   addCard: {
     backgroundColor: COLORS.card,

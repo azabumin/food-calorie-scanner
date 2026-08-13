@@ -63,7 +63,35 @@ export type Strings = {
     dinnerLabel: string;
     noteLabel: string;
   };
+  profile: {
+    title: string;
+    subtitle: string;
+    genderLabel: string;
+    genderMale: string;
+    genderFemale: string;
+    ageLabel: string;
+    agePlaceholder: string;
+    heightLabel: string;
+    heightPlaceholder: string;
+    weightLabel: string;
+    weightPlaceholder: string;
+    activityLabel: string;
+    activitySedentary: string;
+    activityLight: string;
+    activityModerate: string;
+    activityActive: string;
+    activityVeryActive: string;
+    goalLabel: string;
+    goalMaintain: string;
+    goalMild: string;
+    goalModerate: string;
+    goalAggressive: string;
+    submitButton: string;
+    validationError: string;
+    editLink: string;
+  };
   chooseLanguage: string;
+  cancel: string;
 };
 
 const ko: Strings = {
@@ -129,7 +157,35 @@ const ko: Strings = {
     dinnerLabel: '🍽 저녁 추천',
     noteLabel: '💬 코치 한마디',
   },
+  profile: {
+    title: '프로필 설정',
+    subtitle: '입력하신 정보로 나에게 맞는 하루 목표 칼로리를 계산해드려요.',
+    genderLabel: '성별',
+    genderMale: '남성',
+    genderFemale: '여성',
+    ageLabel: '나이',
+    agePlaceholder: '예: 35',
+    heightLabel: '키 (cm)',
+    heightPlaceholder: '예: 170',
+    weightLabel: '체중 (kg)',
+    weightPlaceholder: '예: 65',
+    activityLabel: '활동량',
+    activitySedentary: '거의 안 움직임 (운동 거의 안 함)',
+    activityLight: '가벼운 활동 (주 1~3일 운동)',
+    activityModerate: '보통 활동 (주 3~5일 운동)',
+    activityActive: '활발한 활동 (주 6~7일 운동)',
+    activityVeryActive: '매우 활발함 (매일 강도 높은 운동·육체노동)',
+    goalLabel: '목표',
+    goalMaintain: '체중 유지',
+    goalMild: '천천히 감량 (주당 약 0.25kg)',
+    goalModerate: '감량 (주당 약 0.5kg)',
+    goalAggressive: '빠르게 감량 (주당 약 0.75kg)',
+    submitButton: '목표 칼로리 계산하기',
+    validationError: '모든 항목을 올바르게 입력해 주세요.',
+    editLink: '프로필 수정',
+  },
   chooseLanguage: '언어 선택',
+  cancel: '취소',
 };
 
 const ja: Strings = {
@@ -195,7 +251,35 @@ const ja: Strings = {
     dinnerLabel: '🍽 夕食のおすすめ',
     noteLabel: '💬 コーチからの一言',
   },
+  profile: {
+    title: 'プロフィール設定',
+    subtitle: '入力した情報から、あなたに合った1日の目標カロリーを計算します。',
+    genderLabel: '性別',
+    genderMale: '男性',
+    genderFemale: '女性',
+    ageLabel: '年齢',
+    agePlaceholder: '例: 35',
+    heightLabel: '身長 (cm)',
+    heightPlaceholder: '例: 170',
+    weightLabel: '体重 (kg)',
+    weightPlaceholder: '例: 65',
+    activityLabel: '活動レベル',
+    activitySedentary: 'ほぼ運動しない',
+    activityLight: '軽い運動 (週1〜3日)',
+    activityModerate: '普通の運動 (週3〜5日)',
+    activityActive: '活発な運動 (週6〜7日)',
+    activityVeryActive: '非常に活発 (毎日激しい運動・肉体労働)',
+    goalLabel: '目標',
+    goalMaintain: '体重を維持する',
+    goalMild: 'ゆっくり減量 (週あたり約0.25kg)',
+    goalModerate: '減量する (週あたり約0.5kg)',
+    goalAggressive: '早めに減量 (週あたり約0.75kg)',
+    submitButton: '目標カロリーを計算する',
+    validationError: 'すべての項目を正しく入力してください。',
+    editLink: 'プロフィールを編集',
+  },
   chooseLanguage: '言語を選択',
+  cancel: 'キャンセル',
 };
 
 const en: Strings = {
@@ -261,7 +345,35 @@ const en: Strings = {
     dinnerLabel: '🍽 Dinner Suggestion',
     noteLabel: "💬 Coach's Note",
   },
+  profile: {
+    title: 'Set Up Your Profile',
+    subtitle: "We'll use this to calculate a daily calorie goal that fits you.",
+    genderLabel: 'Gender',
+    genderMale: 'Male',
+    genderFemale: 'Female',
+    ageLabel: 'Age',
+    agePlaceholder: 'e.g. 35',
+    heightLabel: 'Height (cm)',
+    heightPlaceholder: 'e.g. 170',
+    weightLabel: 'Weight (kg)',
+    weightPlaceholder: 'e.g. 65',
+    activityLabel: 'Activity Level',
+    activitySedentary: 'Sedentary (little or no exercise)',
+    activityLight: 'Light (exercise 1-3 days/week)',
+    activityModerate: 'Moderate (exercise 3-5 days/week)',
+    activityActive: 'Active (exercise 6-7 days/week)',
+    activityVeryActive: 'Very Active (hard exercise or physical job)',
+    goalLabel: 'Goal',
+    goalMaintain: 'Maintain Weight',
+    goalMild: 'Lose Weight Gradually (~0.25kg/week)',
+    goalModerate: 'Lose Weight (~0.5kg/week)',
+    goalAggressive: 'Lose Weight Faster (~0.75kg/week)',
+    submitButton: 'Calculate My Goal',
+    validationError: 'Please fill in all fields with valid values.',
+    editLink: 'Edit Profile',
+  },
   chooseLanguage: 'Choose Language',
+  cancel: 'Cancel',
 };
 
 const vi: Strings = {
@@ -327,7 +439,35 @@ const vi: Strings = {
     dinnerLabel: '🍽 Gợi Ý Bữa Tối',
     noteLabel: '💬 Lời Nhắn Từ Huấn Luyện Viên',
   },
+  profile: {
+    title: 'Thiết Lập Hồ Sơ',
+    subtitle: 'Chúng tôi sẽ dùng thông tin này để tính mục tiêu calo hàng ngày phù hợp với bạn.',
+    genderLabel: 'Giới Tính',
+    genderMale: 'Nam',
+    genderFemale: 'Nữ',
+    ageLabel: 'Tuổi',
+    agePlaceholder: 'VD: 35',
+    heightLabel: 'Chiều Cao (cm)',
+    heightPlaceholder: 'VD: 170',
+    weightLabel: 'Cân Nặng (kg)',
+    weightPlaceholder: 'VD: 65',
+    activityLabel: 'Mức Độ Vận Động',
+    activitySedentary: 'Ít vận động (hầu như không tập thể dục)',
+    activityLight: 'Nhẹ (tập 1-3 ngày/tuần)',
+    activityModerate: 'Vừa phải (tập 3-5 ngày/tuần)',
+    activityActive: 'Năng động (tập 6-7 ngày/tuần)',
+    activityVeryActive: 'Rất năng động (vận động mạnh mỗi ngày hoặc lao động chân tay)',
+    goalLabel: 'Mục Tiêu',
+    goalMaintain: 'Duy Trì Cân Nặng',
+    goalMild: 'Giảm Cân Từ Từ (~0.25kg/tuần)',
+    goalModerate: 'Giảm Cân (~0.5kg/tuần)',
+    goalAggressive: 'Giảm Cân Nhanh Hơn (~0.75kg/tuần)',
+    submitButton: 'Tính Mục Tiêu Của Tôi',
+    validationError: 'Vui lòng điền đầy đủ và chính xác tất cả các mục.',
+    editLink: 'Chỉnh Sửa Hồ Sơ',
+  },
   chooseLanguage: 'Chọn Ngôn Ngữ',
+  cancel: 'Hủy',
 };
 
 const zh: Strings = {
@@ -393,7 +533,35 @@ const zh: Strings = {
     dinnerLabel: '🍽 晚餐建议',
     noteLabel: '💬 教练留言',
   },
+  profile: {
+    title: '设置个人资料',
+    subtitle: '我们将根据这些信息计算适合您的每日目标卡路里。',
+    genderLabel: '性别',
+    genderMale: '男性',
+    genderFemale: '女性',
+    ageLabel: '年龄',
+    agePlaceholder: '例如: 35',
+    heightLabel: '身高 (cm)',
+    heightPlaceholder: '例如: 170',
+    weightLabel: '体重 (kg)',
+    weightPlaceholder: '例如: 65',
+    activityLabel: '活动水平',
+    activitySedentary: '久坐 (几乎不运动)',
+    activityLight: '轻度活动 (每周运动1-3天)',
+    activityModerate: '中度活动 (每周运动3-5天)',
+    activityActive: '积极活动 (每周运动6-7天)',
+    activityVeryActive: '非常活跃 (每天高强度运动或体力劳动)',
+    goalLabel: '目标',
+    goalMaintain: '维持体重',
+    goalMild: '缓慢减重 (每周约0.25kg)',
+    goalModerate: '减重 (每周约0.5kg)',
+    goalAggressive: '快速减重 (每周约0.75kg)',
+    submitButton: '计算我的目标',
+    validationError: '请正确填写所有项目。',
+    editLink: '编辑个人资料',
+  },
   chooseLanguage: '选择语言',
+  cancel: '取消',
 };
 
 const id: Strings = {
@@ -459,7 +627,35 @@ const id: Strings = {
     dinnerLabel: '🍽 Saran Makan Malam',
     noteLabel: '💬 Catatan dari Pelatih',
   },
+  profile: {
+    title: 'Atur Profil Anda',
+    subtitle: 'Kami akan menggunakan informasi ini untuk menghitung target kalori harian yang sesuai untuk Anda.',
+    genderLabel: 'Jenis Kelamin',
+    genderMale: 'Laki-laki',
+    genderFemale: 'Perempuan',
+    ageLabel: 'Usia',
+    agePlaceholder: 'cth: 35',
+    heightLabel: 'Tinggi Badan (cm)',
+    heightPlaceholder: 'cth: 170',
+    weightLabel: 'Berat Badan (kg)',
+    weightPlaceholder: 'cth: 65',
+    activityLabel: 'Tingkat Aktivitas',
+    activitySedentary: 'Jarang Bergerak (hampir tidak berolahraga)',
+    activityLight: 'Ringan (olahraga 1-3 hari/minggu)',
+    activityModerate: 'Sedang (olahraga 3-5 hari/minggu)',
+    activityActive: 'Aktif (olahraga 6-7 hari/minggu)',
+    activityVeryActive: 'Sangat Aktif (olahraga berat harian atau pekerjaan fisik)',
+    goalLabel: 'Target',
+    goalMaintain: 'Menjaga Berat Badan',
+    goalMild: 'Turun Berat Badan Perlahan (~0.25kg/minggu)',
+    goalModerate: 'Turun Berat Badan (~0.5kg/minggu)',
+    goalAggressive: 'Turun Berat Badan Lebih Cepat (~0.75kg/minggu)',
+    submitButton: 'Hitung Target Saya',
+    validationError: 'Silakan isi semua kolom dengan benar.',
+    editLink: 'Ubah Profil',
+  },
   chooseLanguage: 'Pilih Bahasa',
+  cancel: 'Batal',
 };
 
 const tl: Strings = {
@@ -525,7 +721,35 @@ const tl: Strings = {
     dinnerLabel: '🍽 Mungkahi sa Hapunan',
     noteLabel: '💬 Mensahe ng Coach',
   },
+  profile: {
+    title: 'I-set Up ang Iyong Profile',
+    subtitle: 'Gagamitin namin ito para kalkulahin ang target na calories araw-araw na angkop sa iyo.',
+    genderLabel: 'Kasarian',
+    genderMale: 'Lalaki',
+    genderFemale: 'Babae',
+    ageLabel: 'Edad',
+    agePlaceholder: 'hal. 35',
+    heightLabel: 'Taas (cm)',
+    heightPlaceholder: 'hal. 170',
+    weightLabel: 'Timbang (kg)',
+    weightPlaceholder: 'hal. 65',
+    activityLabel: 'Antas ng Aktibidad',
+    activitySedentary: 'Kaunti ang Galaw (halos walang ehersisyo)',
+    activityLight: 'Magaan (ehersisyo 1-3 araw/linggo)',
+    activityModerate: 'Katamtaman (ehersisyo 3-5 araw/linggo)',
+    activityActive: 'Aktibo (ehersisyo 6-7 araw/linggo)',
+    activityVeryActive: 'Napaka-Aktibo (mabigat na ehersisyo araw-araw o pisikal na trabaho)',
+    goalLabel: 'Target',
+    goalMaintain: 'Panatilihin ang Timbang',
+    goalMild: 'Mabagal na Pagbaba ng Timbang (~0.25kg/linggo)',
+    goalModerate: 'Pagbaba ng Timbang (~0.5kg/linggo)',
+    goalAggressive: 'Mas Mabilis na Pagbaba ng Timbang (~0.75kg/linggo)',
+    submitButton: 'Kalkulahin ang Target Ko',
+    validationError: 'Pakisagutan nang tama ang lahat ng patlang.',
+    editLink: 'I-edit ang Profile',
+  },
   chooseLanguage: 'Pumili ng Wika',
+  cancel: 'Kanselahin',
 };
 
 const th: Strings = {
@@ -591,7 +815,35 @@ const th: Strings = {
     dinnerLabel: '🍽 คำแนะนำมื้อเย็น',
     noteLabel: '💬 ข้อความจากโค้ช',
   },
+  profile: {
+    title: 'ตั้งค่าโปรไฟล์ของคุณ',
+    subtitle: 'เราจะใช้ข้อมูลนี้เพื่อคำนวณเป้าหมายแคลอรี่รายวันที่เหมาะกับคุณ',
+    genderLabel: 'เพศ',
+    genderMale: 'ชาย',
+    genderFemale: 'หญิง',
+    ageLabel: 'อายุ',
+    agePlaceholder: 'เช่น 35',
+    heightLabel: 'ส่วนสูง (ซม.)',
+    heightPlaceholder: 'เช่น 170',
+    weightLabel: 'น้ำหนัก (กก.)',
+    weightPlaceholder: 'เช่น 65',
+    activityLabel: 'ระดับกิจกรรม',
+    activitySedentary: 'นั่งทำงานเป็นหลัก (แทบไม่ออกกำลังกาย)',
+    activityLight: 'เบา (ออกกำลังกาย 1-3 วัน/สัปดาห์)',
+    activityModerate: 'ปานกลาง (ออกกำลังกาย 3-5 วัน/สัปดาห์)',
+    activityActive: 'กระตือรือร้น (ออกกำลังกาย 6-7 วัน/สัปดาห์)',
+    activityVeryActive: 'กระตือรือร้นมาก (ออกกำลังกายหนักทุกวันหรืองานใช้แรงกาย)',
+    goalLabel: 'เป้าหมาย',
+    goalMaintain: 'รักษาน้ำหนัก',
+    goalMild: 'ลดน้ำหนักช้าๆ (~0.25กก./สัปดาห์)',
+    goalModerate: 'ลดน้ำหนัก (~0.5กก./สัปดาห์)',
+    goalAggressive: 'ลดน้ำหนักเร็วขึ้น (~0.75กก./สัปดาห์)',
+    submitButton: 'คำนวณเป้าหมายของฉัน',
+    validationError: 'กรุณากรอกข้อมูลให้ครบและถูกต้องทุกช่อง',
+    editLink: 'แก้ไขโปรไฟล์',
+  },
   chooseLanguage: 'เลือกภาษา',
+  cancel: 'ยกเลิก',
 };
 
 const my: Strings = {
@@ -657,7 +909,35 @@ const my: Strings = {
     dinnerLabel: '🍽 ညစာ အကြံပြုချက်',
     noteLabel: '💬 နည်းပြ၏ စကားစုံ',
   },
+  profile: {
+    title: 'ကိုယ်ရေးအချက်အလက် သတ်မှတ်ရန်',
+    subtitle: 'ဤအချက်အလက်များကို အသုံးပြု၍ သင့်အတွက် သင့်တော်သော နေ့စဉ် ကယ်လိုရီ ပန်းတိုင်ကို တွက်ချက်ပေးပါမည်။',
+    genderLabel: 'ကျား/မ',
+    genderMale: 'ကျား',
+    genderFemale: 'မ',
+    ageLabel: 'အသက်',
+    agePlaceholder: 'ဥပမာ 35',
+    heightLabel: 'အရပ် (cm)',
+    heightPlaceholder: 'ဥပမာ 170',
+    weightLabel: 'ကိုယ်အလေးချိန် (kg)',
+    weightPlaceholder: 'ဥပမာ 65',
+    activityLabel: 'လှုပ်ရှားမှု အဆင့်',
+    activitySedentary: 'လှုပ်ရှားမှု နည်း (လေ့ကျင့်ခန်း လုပ်လေ့မရှိ)',
+    activityLight: 'ပေါ့ပါး (တစ်ပတ် ၁-၃ ရက် လေ့ကျင့်ခန်း)',
+    activityModerate: 'အလယ်အလတ် (တစ်ပတ် ၃-၅ ရက် လေ့ကျင့်ခန်း)',
+    activityActive: 'တက်ကြွသော (တစ်ပတ် ၆-၇ ရက် လေ့ကျင့်ခန်း)',
+    activityVeryActive: 'အလွန်တက်ကြွသော (နေ့စဉ် ပြင်းထန်သော လေ့ကျင့်ခန်း သို့မဟုတ် ရုပ်ပိုင်းဆိုင်ရာ အလုပ်)',
+    goalLabel: 'ပန်းတိုင်',
+    goalMaintain: 'ကိုယ်အလေးချိန် ထိန်းထားရန်',
+    goalMild: 'ဖြည်းညင်းစွာ လျှော့ချရန် (တစ်ပတ် ~0.25kg)',
+    goalModerate: 'လျှော့ချရန် (တစ်ပတ် ~0.5kg)',
+    goalAggressive: 'ပိုမြန်စွာ လျှော့ချရန် (တစ်ပတ် ~0.75kg)',
+    submitButton: 'ကျွန်ုပ်၏ ပန်းတိုင် တွက်ချက်ရန်',
+    validationError: 'ကျေးဇူးပြု၍ အကွက်အားလုံးကို မှန်ကန်စွာ ဖြည့်ပါ။',
+    editLink: 'ကိုယ်ရေးအချက်အလက် ပြင်ဆင်ရန်',
+  },
   chooseLanguage: 'ဘာသာစကား ရွေးရန်',
+  cancel: 'ပယ်ဖျက်ရန်',
 };
 
 const ne: Strings = {
@@ -723,7 +1003,35 @@ const ne: Strings = {
     dinnerLabel: '🍽 डिनर सुझाव',
     noteLabel: '💬 कोचको सन्देश',
   },
+  profile: {
+    title: 'प्रोफाइल सेटअप गर्नुहोस्',
+    subtitle: 'यो जानकारीको आधारमा हामी तपाईंलाई उपयुक्त दैनिक क्यालोरी लक्ष्य गणना गर्नेछौं।',
+    genderLabel: 'लिङ्ग',
+    genderMale: 'पुरुष',
+    genderFemale: 'महिला',
+    ageLabel: 'उमेर',
+    agePlaceholder: 'जस्तै: ३५',
+    heightLabel: 'उचाइ (cm)',
+    heightPlaceholder: 'जस्तै: १७०',
+    weightLabel: 'तौल (kg)',
+    weightPlaceholder: 'जस्तै: ६५',
+    activityLabel: 'सक्रियता स्तर',
+    activitySedentary: 'थोरै चलमल (व्यायाम गर्दिन)',
+    activityLight: 'हल्का (हप्तामा १-३ दिन व्यायाम)',
+    activityModerate: 'मध्यम (हप्तामा ३-५ दिन व्यायाम)',
+    activityActive: 'सक्रिय (हप्तामा ६-७ दिन व्यायाम)',
+    activityVeryActive: 'धेरै सक्रिय (दैनिक कडा व्यायाम वा शारीरिक काम)',
+    goalLabel: 'लक्ष्य',
+    goalMaintain: 'तौल कायम राख्ने',
+    goalMild: 'बिस्तारै तौल घटाउने (~हप्तामा ०.२५kg)',
+    goalModerate: 'तौल घटाउने (~हप्तामा ०.५kg)',
+    goalAggressive: 'छिटो तौल घटाउने (~हप्तामा ०.७५kg)',
+    submitButton: 'मेरो लक्ष्य गणना गर्नुहोस्',
+    validationError: 'कृपया सबै फिल्डहरू सही तरिकाले भर्नुहोस्।',
+    editLink: 'प्रोफाइल सम्पादन गर्नुहोस्',
+  },
   chooseLanguage: 'भाषा छान्नुहोस्',
+  cancel: 'रद्द गर्नुहोस्',
 };
 
 const pt: Strings = {
@@ -789,7 +1097,35 @@ const pt: Strings = {
     dinnerLabel: '🍽 Sugestão de Jantar',
     noteLabel: '💬 Recado do Coach',
   },
+  profile: {
+    title: 'Configure Seu Perfil',
+    subtitle: 'Usaremos essas informações para calcular uma meta de calorias diária adequada para você.',
+    genderLabel: 'Sexo',
+    genderMale: 'Masculino',
+    genderFemale: 'Feminino',
+    ageLabel: 'Idade',
+    agePlaceholder: 'ex: 35',
+    heightLabel: 'Altura (cm)',
+    heightPlaceholder: 'ex: 170',
+    weightLabel: 'Peso (kg)',
+    weightPlaceholder: 'ex: 65',
+    activityLabel: 'Nível de Atividade',
+    activitySedentary: 'Sedentário (pouco ou nenhum exercício)',
+    activityLight: 'Leve (exercício 1-3 dias/semana)',
+    activityModerate: 'Moderado (exercício 3-5 dias/semana)',
+    activityActive: 'Ativo (exercício 6-7 dias/semana)',
+    activityVeryActive: 'Muito Ativo (exercício intenso diário ou trabalho físico)',
+    goalLabel: 'Objetivo',
+    goalMaintain: 'Manter o Peso',
+    goalMild: 'Perder Peso Gradualmente (~0.25kg/semana)',
+    goalModerate: 'Perder Peso (~0.5kg/semana)',
+    goalAggressive: 'Perder Peso Mais Rápido (~0.75kg/semana)',
+    submitButton: 'Calcular Minha Meta',
+    validationError: 'Preencha todos os campos corretamente.',
+    editLink: 'Editar Perfil',
+  },
   chooseLanguage: 'Escolher Idioma',
+  cancel: 'Cancelar',
 };
 
 export const STRINGS: Record<Lang, Strings> = { ja, ko, en, vi, zh, id, tl, th, my, ne, pt };

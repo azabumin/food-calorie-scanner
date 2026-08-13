@@ -104,6 +104,17 @@ const STATUS_LABEL: Record<string, string> = {
   over: 'over the goal',
 };
 
+const GOAL_RATE_LABEL: Record<string, string> = {
+  maintain: 'maintaining current weight (no deficit)',
+  mild: 'losing weight gradually (~0.25kg/week)',
+  moderate: 'losing weight at a moderate pace (~0.5kg/week)',
+  aggressive: 'losing weight more quickly (~0.75kg/week)',
+};
+
+function resolveGoalRate(value: unknown): string {
+  return typeof value === 'string' && value in GOAL_RATE_LABEL ? value : 'maintain';
+}
+
 function buildCoachPrompt(body: CoachRequestBody): string {
   const languageName = LANGUAGE_NAMES[body.lang] ?? LANGUAGE_NAMES.ko;
   const mealLines =
@@ -118,6 +129,7 @@ function buildCoachPrompt(body: CoachRequestBody): string {
 - Remaining calorie budget: ${body.remainingCalories}kcal
 - Current status: ${STATUS_LABEL[body.status] ?? body.status}
 - Nutrients consumed today: protein ${body.nutrients.protein}g, fat ${body.nutrients.fat}g, carbs ${body.nutrients.carbs}g
+- User's diet goal: ${GOAL_RATE_LABEL[body.dietGoal]}
 - Meals logged today:
 ${mealLines}
 
@@ -217,6 +229,7 @@ type CoachRequestBody = {
   nutrients: { protein: number; fat: number; carbs: number };
   meals: { dishName: string; calories: number }[];
   lang: string;
+  dietGoal: string;
 };
 
 function parseCoachBody(raw: unknown): CoachRequestBody | null {
@@ -252,6 +265,7 @@ function parseCoachBody(raw: unknown): CoachRequestBody | null {
     nutrients: { protein: nutrients.protein, fat: nutrients.fat, carbs: nutrients.carbs },
     meals,
     lang: resolveLang(b.lang),
+    dietGoal: resolveGoalRate(b.dietGoal),
   };
 }
 

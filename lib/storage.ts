@@ -1,10 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { isValidProfile } from './tdee';
 import { LANGUAGES } from '../types';
-import type { Lang, MealEntry } from '../types';
+import type { Lang, MealEntry, UserProfile } from '../types';
 
 const GOAL_KEY = 'diet:goalCalories';
 const LANG_KEY = 'diet:lang';
+const PROFILE_KEY = 'diet:profile';
 const DEFAULT_GOAL = 1800;
 
 export function todayKey(): string {
@@ -47,4 +49,19 @@ export async function loadLang(): Promise<Lang | null> {
 
 export async function saveLang(lang: Lang): Promise<void> {
   await AsyncStorage.setItem(LANG_KEY, lang);
+}
+
+export async function loadProfile(): Promise<UserProfile | null> {
+  const raw = await AsyncStorage.getItem(PROFILE_KEY);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    return isValidProfile(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function saveProfile(profile: UserProfile): Promise<void> {
+  await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
 }

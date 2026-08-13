@@ -58,3 +58,18 @@ export const LANGUAGES: LanguageMeta[] = [
   { code: 'ne', native: 'नेपाली', english: 'Nepali' },
   { code: 'pt', native: 'Português', english: 'Portuguese' },
 ];
+
+// Collected once on first launch so the app can compute a personalized daily
+// calorie goal (Mifflin-St Jeor BMR -> TDEE -> goal) instead of a flat default.
+export type Gender = 'male' | 'female';
+export type ActivityLevel = 'sedentary' | 'light' | 'moderate' | 'active' | 'veryActive';
+export type GoalRate = 'maintain' | 'mild' | 'moderate' | 'aggressive';
+
+export type UserProfile = {
+  gender: Gender;
+  age: number;
+  heightCm: number;
+  weightKg: number;
+  activityLevel: ActivityLevel;
+  goalRate: GoalRate;
+};

@@ -1,6 +1,6 @@
 import { WORKER_URL } from '../constants/config';
 import { STRINGS } from './i18n';
-import type { AnalysisResult, CoachAdvice, DietStatus, Lang, NutrientTotals } from '../types';
+import type { AnalysisResult, CoachAdvice, DietStatus, GoalRate, Lang, NutrientTotals } from '../types';
 
 export class AnalyzeError extends Error {
   constructor(message: string, public status?: number) {
@@ -45,6 +45,7 @@ export type CoachRequest = {
   nutrients: NutrientTotals;
   meals: { dishName: string; calories: number }[];
   lang: Lang;
+  dietGoal: GoalRate;
 };
 
 export async function getCoachAdvice(req: CoachRequest): Promise<CoachAdvice> {
