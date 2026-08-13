@@ -9,7 +9,11 @@ export const COLORS = {
   border: '#EEE2D3',
   chipBg: '#FBEEE0',
   danger: '#C94A3D',
+  warning: '#C98A1E',
   disabled: '#D8CFC2',
+  macroCarbs: '#E8A83C',
+  macroProtein: '#3F7CAC',
+  macroFat: '#8E6BAE',
 };
 
 export const SPACING = {

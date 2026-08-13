@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "음식 칼로리 스캐너",
+    "name": "오늘의 다이어트 다이어리",
     "slug": "food-calorie-scanner",
     "version": "1.0.0",
     "orientation": "portrait",

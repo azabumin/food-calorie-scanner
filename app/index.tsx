@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -11,15 +11,74 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 
+import CoachCard from '../components/CoachCard';
+import MealList from '../components/MealList';
+import NutritionBalance from '../components/NutritionBalance';
+import SummaryCard from '../components/SummaryCard';
 import { COLORS, RADIUS, SPACING } from '../constants/theme';
-import { analyzeFoodPhoto, AnalyzeError } from '../lib/api';
-import type { AnalysisResult } from '../types';
+import { AnalyzeError, analyzeFoodPhoto, getCoachAdvice } from '../lib/api';
+import { loadGoalCalories, loadTodayLog, saveGoalCalories, saveTodayLog } from '../lib/storage';
+import type { AnalysisResult, CoachAdvice, DietStatus, MealEntry } from '../types';
+
+const NEAR_GOAL_RATIO = 0.9;
+const DINNER_HOUR = 18;
 
 export default function HomeScreen() {
+  const [hydrated, setHydrated] = useState(false);
+  const [goal, setGoal] = useState(1800);
+  const [meals, setMeals] = useState<MealEntry[]>([]);
+
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const [coachAdvice, setCoachAdvice] = useState<CoachAdvice | null>(null);
+  const [coachLoading, setCoachLoading] = useState(false);
+  const [coachError, setCoachError] = useState<string | null>(null);
+
+  // Load persisted goal + today's log once on mount. The save effects below
+  // are gated on `hydrated` so they can't fire with the empty initial state
+  // and clobber what's already in storage before this finishes.
+  useEffect(() => {
+    (async () => {
+      const [loadedGoal, loadedMeals] = await Promise.all([loadGoalCalories(), loadTodayLog()]);
+      setGoal(loadedGoal);
+      setMeals(loadedMeals);
+      setHydrated(true);
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    saveGoalCalories(goal);
+  }, [goal, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    saveTodayLog(meals);
+  }, [meals, hydrated]);
+
+  const consumed = useMemo(() => meals.reduce((sum, m) => sum + m.totalCalories, 0), [meals]);
+  const nutrientTotals = useMemo(
+    () =>
+      meals.reduce(
+        (acc, m) => ({
+          protein: acc.protein + m.nutrients.protein,
+          fat: acc.fat + m.nutrients.fat,
+          carbs: acc.carbs + m.nutrients.carbs,
+        }),
+        { protein: 0, fat: 0, carbs: 0 }
+      ),
+    [meals]
+  );
+  const remaining = goal - consumed;
+  const status: DietStatus = useMemo(() => {
+    if (consumed > goal) return 'over';
+    if (goal > 0 && consumed / goal >= NEAR_GOAL_RATIO) return 'near';
+    return 'ok';
+  }, [consumed, goal]);
+  const overWarning = status === 'over' && new Date().getHours() < DINNER_HOUR;
 
   async function analyze(uri: string) {
     setAnalyzing(true);
@@ -75,31 +134,88 @@ export default function HomeScreen() {
     }
   }
 
-  function reset() {
+  function cancelPick() {
     setImageUri(null);
     setResult(null);
     setErrorMsg(null);
   }
 
+  function confirmAddMeal() {
+    if (!result) return;
+    const entry: MealEntry = {
+      ...result,
+      id: `${Date.now()}`,
+      time: new Date().toISOString(),
+    };
+    setMeals((prev) => [...prev, entry]);
+    cancelPick();
+  }
+
+  function deleteMeal(id: string) {
+    setMeals((prev) => prev.filter((m) => m.id !== id));
+  }
+
+  async function requestCoachAdvice() {
+    setCoachLoading(true);
+    setCoachError(null);
+    try {
+      const advice = await getCoachAdvice({
+        goalCalories: goal,
+        consumedCalories: consumed,
+        remainingCalories: remaining,
+        status,
+        nutrients: nutrientTotals,
+        meals: meals.map((m) => ({ dishName: m.dishName, calories: m.totalCalories })),
+      });
+      setCoachAdvice(advice);
+    } catch (e) {
+      setCoachError(
+        e instanceof AnalyzeError ? e.message : '코치 조언을 받아오는 중 문제가 발생했습니다.'
+      );
+    } finally {
+      setCoachLoading(false);
+    }
+  }
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>음식 칼로리 스캐너</Text>
+      <Text style={styles.title}>오늘의 다이어트 다이어리</Text>
       <Text style={styles.subtitle}>
-        음식 사진을 찍으면 AI가 재료와 칼로리를 분석해서 알려드려요.
+        사진 한 장으로 칼로리와 영양을 기록하고, AI 코치의 저녁 식사 조언까지 받아보세요.
       </Text>
 
       {!imageUri && (
-        <View style={styles.pickCard}>
-          <TouchableOpacity style={styles.primaryButton} onPress={() => handlePick('camera')}>
-            <Text style={styles.primaryButtonText}>카메라로 촬영</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.secondaryButton} onPress={() => handlePick('library')}>
-            <Text style={styles.secondaryButtonText}>갤러리에서 선택</Text>
-          </TouchableOpacity>
-          <Text style={styles.helperText}>
-            * AI가 추정한 칼로리이며, 실제 조리법과 양에 따라 오차가 있을 수 있습니다.
-          </Text>
-        </View>
+        <>
+          <SummaryCard
+            goal={goal}
+            onGoalChange={setGoal}
+            consumed={consumed}
+            remaining={remaining}
+            status={status}
+            overWarning={overWarning}
+          />
+
+          <View style={styles.addCard}>
+            <TouchableOpacity style={styles.primaryButton} onPress={() => handlePick('camera')}>
+              <Text style={styles.primaryButtonText}>사진으로 식사 기록하기</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.secondaryButton} onPress={() => handlePick('library')}>
+              <Text style={styles.secondaryButtonText}>갤러리에서 선택</Text>
+            </TouchableOpacity>
+            <Text style={styles.helperText}>
+              * AI가 추정한 칼로리·영양이며, 실제 조리법과 양에 따라 오차가 있을 수 있습니다.
+            </Text>
+          </View>
+
+          <MealList meals={meals} onDelete={deleteMeal} />
+          <NutritionBalance nutrients={nutrientTotals} />
+          <CoachCard
+            advice={coachAdvice}
+            loading={coachLoading}
+            errorMsg={coachError}
+            onRequest={requestCoachAdvice}
+          />
+        </>
       )}
 
       {imageUri && (
@@ -144,13 +260,22 @@ export default function HomeScreen() {
                 <Text style={styles.totalValue}>{result.totalCalories} kcal</Text>
               </View>
 
+              <Text style={styles.macroLine}>
+                단백질 {Math.round(result.nutrients.protein)}g · 지방 {Math.round(result.nutrients.fat)}g
+                · 탄수화물 {Math.round(result.nutrients.carbs)}g
+              </Text>
+
               {!!result.confidenceNote && (
                 <Text style={styles.confidenceNote}>{result.confidenceNote}</Text>
               )}
+
+              <TouchableOpacity style={styles.primaryButton} onPress={confirmAddMeal}>
+                <Text style={styles.primaryButtonText}>오늘 식사 기록에 추가하기</Text>
+              </TouchableOpacity>
             </View>
           )}
 
-          <TouchableOpacity style={styles.secondaryButton} onPress={reset}>
+          <TouchableOpacity style={styles.secondaryButton} onPress={cancelPick}>
             <Text style={styles.secondaryButtonText}>다른 사진으로 다시 분석하기</Text>
           </TouchableOpacity>
         </View>
@@ -169,6 +294,7 @@ const styles = StyleSheet.create({
     maxWidth: 480,
     width: '100%',
     alignSelf: 'center',
+    gap: SPACING.md,
   },
   title: {
     fontSize: 26,
@@ -181,9 +307,9 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     textAlign: 'center',
     marginTop: SPACING.xs,
-    marginBottom: SPACING.lg,
+    marginBottom: SPACING.xs,
   },
-  pickCard: {
+  addCard: {
     backgroundColor: COLORS.card,
     borderRadius: RADIUS.lg,
     borderWidth: 1,
@@ -251,6 +377,7 @@ const styles = StyleSheet.create({
   },
   analysisBlock: {
     paddingTop: SPACING.sm,
+    gap: SPACING.xs,
   },
   dishName: {
     fontSize: 20,
@@ -307,10 +434,13 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: COLORS.primaryDark,
   },
+  macroLine: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+  },
   confidenceNote: {
     fontSize: 12,
     color: COLORS.textMuted,
-    marginTop: SPACING.md,
     lineHeight: 18,
   },
 });
