@@ -1,0 +1,399 @@
+<title>다이어트 앱 다국어 지원 현황 조사</title>
+<style>
+  :root {
+    --bg: #eef2ec;
+    --surface: #ffffff;
+    --surface-2: #e4eae1;
+    --ink: #202b22;
+    --ink-muted: #57685a;
+    --ink-faint: #8a9a87;
+    --line: #d6ded2;
+    --accent: #a23b54;
+    --accent-deep: #7a2740;
+    --accent-soft: #f3dee3;
+    --good: #3e7d4c;
+    --good-soft: #dfeee1;
+    --warn: #b4472a;
+    --warn-soft: #f6ddd3;
+    --neutral-tag: #e4e7de;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #161c17;
+      --surface: #1e251f;
+      --surface-2: #252d26;
+      --ink: #eaeee7;
+      --ink-muted: #a7b3a2;
+      --ink-faint: #7a8778;
+      --line: #333f34;
+      --accent: #e0748f;
+      --accent-deep: #f0a4b6;
+      --accent-soft: #3a2029;
+      --good: #6fbd7f;
+      --good-soft: #22322a;
+      --warn: #e08063;
+      --warn-soft: #3a251e;
+      --neutral-tag: #2b342c;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #161c17;
+    --surface: #1e251f;
+    --surface-2: #252d26;
+    --ink: #eaeee7;
+    --ink-muted: #a7b3a2;
+    --ink-faint: #7a8778;
+    --line: #333f34;
+    --accent: #e0748f;
+    --accent-deep: #f0a4b6;
+    --accent-soft: #3a2029;
+    --good: #6fbd7f;
+    --good-soft: #22322a;
+    --warn: #e08063;
+    --warn-soft: #3a251e;
+    --neutral-tag: #2b342c;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page { max-width: 920px; margin: 0 auto; padding: 64px 28px 96px; }
+
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--accent-deep); margin-bottom: 18px;
+  }
+  .eyebrow::before { content: ""; width: 22px; height: 2px; background: var(--accent); display: inline-block; }
+
+  h1 {
+    font-family: Georgia, "Nanum Myeongjo", "Apple SD Gothic Neo", serif;
+    font-weight: 600; font-size: clamp(28px, 4vw, 40px); line-height: 1.25;
+    letter-spacing: -0.01em; text-wrap: balance; margin: 0 0 14px; color: var(--ink);
+  }
+
+  .lede { font-size: 17px; color: var(--ink-muted); max-width: 64ch; margin: 0 0 8px; }
+
+  .meta-row {
+    display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 22px 0 46px;
+    padding-top: 18px; border-top: 1px solid var(--line);
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 12.5px; color: var(--ink-faint);
+  }
+  .meta-row span b { color: var(--ink-muted); font-weight: 600; }
+
+  section { margin-bottom: 52px; }
+
+  h2 {
+    font-family: Georgia, "Nanum Myeongjo", "Apple SD Gothic Neo", serif;
+    font-size: 21px; font-weight: 600; margin: 0 0 6px; color: var(--ink);
+  }
+  .section-sub { font-size: 13.5px; color: var(--ink-faint); margin: 0 0 22px; }
+
+  p { margin: 0 0 14px; max-width: 68ch; }
+  p:last-child { margin-bottom: 0; }
+
+  .callout {
+    background: var(--accent-soft);
+    border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+    border-radius: 10px; padding: 22px 24px; display: grid; gap: 10px;
+  }
+  .callout .callout-label {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 11.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent-deep);
+  }
+  .callout p { margin: 0; max-width: none; color: var(--ink); }
+  .callout p + p { margin-top: 8px; }
+
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; min-width: 860px; font-size: 13.5px; }
+  thead th {
+    text-align: left; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-faint);
+    padding: 13px 16px; border-bottom: 1px solid var(--line); background: var(--surface-2); white-space: nowrap;
+  }
+  tbody td { padding: 14px 16px; border-bottom: 1px solid var(--line); vertical-align: top; color: var(--ink-muted); }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr.self-row td { background: color-mix(in srgb, var(--good-soft) 60%, transparent); }
+  td.app-name { color: var(--ink); font-weight: 600; }
+  td.app-name .sub { display: block; font-weight: 400; color: var(--ink-faint); font-size: 12px; margin-top: 2px; }
+  td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  .tag {
+    display: inline-block; font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px;
+    background: var(--neutral-tag); color: var(--ink-muted); white-space: nowrap;
+  }
+  .tag.self { background: var(--good-soft); color: var(--good); }
+  .tag.watch { background: var(--warn-soft); color: var(--warn); }
+
+  .cards { display: grid; gap: 16px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 22px 24px; }
+  .card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+  .card-head h3 {
+    font-family: Georgia, "Nanum Myeongjo", "Apple SD Gothic Neo", serif;
+    font-size: 16.5px; font-weight: 600; margin: 0; color: var(--ink);
+  }
+  .card p { color: var(--ink-muted); font-size: 14px; }
+  .card ul { margin: 10px 0 0; padding-left: 20px; color: var(--ink-muted); font-size: 14px; }
+  .card li { margin-bottom: 4px; }
+  .card li::marker { color: var(--accent); }
+
+  .highlight-card {
+    background: var(--good-soft);
+    border: 1px solid color-mix(in srgb, var(--good) 35%, transparent);
+    border-radius: 10px; padding: 26px 26px;
+  }
+  .highlight-card h3 {
+    font-family: Georgia, "Nanum Myeongjo", "Apple SD Gothic Neo", serif;
+    font-size: 19px; color: var(--ink); margin: 0 0 4px;
+  }
+  .highlight-card .sub { color: var(--good); font-size: 12.5px; font-weight: 600; margin-bottom: 14px; }
+  .highlight-card p { color: var(--ink); max-width: none; }
+  .highlight-card ul { color: var(--ink); max-width: none; margin: 10px 0 0; padding-left: 20px; }
+  .highlight-card li::marker { color: var(--good); }
+
+  .limits { border-left: 3px solid var(--line); padding-left: 18px; color: var(--ink-faint); font-size: 13.5px; }
+
+  .sources { font-size: 13px; color: var(--ink-faint); display: grid; gap: 6px; }
+  .sources a { color: var(--ink-muted); }
+  .sources a:hover { color: var(--accent-deep); }
+
+  footer { margin-top: 60px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 12px; color: var(--ink-faint); }
+
+  a { color: var(--accent-deep); }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+
+<div class="page">
+
+  <div class="eyebrow">Competitor Scan · 오늘의 다이어트 다이어리</div>
+  <h1>사진 한 장으로 칼로리를 분석해주는 다이어트 앱, 다국어는 어디까지 갔나</h1>
+  <p class="lede">
+    지금 만든 "오늘의 다이어트 다이어리"(한국어/일본어)와 비교해, 사진으로 음식을 찍으면 AI가 칼로리·영양을
+    분석해주는 앱들이 몇 개 언어까지 지원하는지, 기능은 뭐가 다른지 조사했습니다.
+  </p>
+  <div class="meta-row">
+    <span><b>조사 방법</b> 웹 검색 8건 + 앱스토어 리스팅 확인</span>
+    <span><b>기준일</b> 2026년 8월</span>
+    <span><b>비교 대상</b> 사진 기반 AI 칼로리 분석 앱</span>
+  </div>
+
+  <section>
+    <div class="callout">
+      <div class="callout-label">한줄 결론</div>
+      <p>
+        훨씬 더 많은 언어를 지원하는 대형 경쟁자가 이미 있습니다 — <b>Cal AI 15개 언어(한국어·일본어 포함)</b>,
+        <b>Yazio 약 20개</b>, <b>Calzy 35개 이상</b>. 다만 이런 앱들은 대부분 사진 AI 분석 결과 확인 자체를
+        유료 구독으로 막아두거나(Cal AI: $2.99~$29.99), 바코드·수동 입력 위주 기록 앱에 AI가 부가 기능으로
+        붙은 구조입니다. "남은 칼로리 안에서 오늘 저녁 뭘 먹을지 AI가 먼저 제안하고, 저녁 전에 이미 초과했으면
+        경고해주는" 기능은 조사 범위에서 확인된 앱이 없었습니다.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <h2>한눈에 비교</h2>
+    <p class="section-sub">언어 수와 핵심 기능을 기준으로</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>앱</th>
+            <th>언어 수</th>
+            <th>사진 AI 분석</th>
+            <th>AI 저녁 코치·초과 경고</th>
+            <th>가격</th>
+            <th>비고</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="self-row">
+            <td class="app-name">오늘의 다이어트 다이어리<span class="sub">본인 프로젝트</span></td>
+            <td class="num"><span class="tag self">2개</span><span style="display:block;font-size:11px;margin-top:4px;">ko·ja, 확장 쉬운 구조</span></td>
+            <td>✅ 무료</td>
+            <td>✅ 남은 칼로리 기반 저녁 메뉴 제안 + 저녁 전 초과 경고</td>
+            <td>무료</td>
+            <td>바코드·수동 입력 DB 없음, AI 분석에만 집중</td>
+          </tr>
+          <tr>
+            <td class="app-name">Cal AI<span class="sub">iOS/Android · 미국</span></td>
+            <td class="num">15개<span style="display:block;font-size:11px;">한국어·일본어 포함</span></td>
+            <td>✅ 단, 결과 확인에 구독 필요</td>
+            <td>없음 (매크로 목표 조정만 가능)</td>
+            <td>월 $2.99~$29.99</td>
+            <td>가장 유명한 글로벌 AI 사진 칼로리 앱, 핵심 기능이 유료</td>
+          </tr>
+          <tr>
+            <td class="app-name">Yazio<span class="sub">유럽</span></td>
+            <td class="num">약 20개<span style="display:block;font-size:11px;">"가장 현지화된 트래커"</span></td>
+            <td>확인 안 됨 (바코드·수동 중심)</td>
+            <td>확인 안 됨</td>
+            <td>프리미엄 구독</td>
+            <td>단식 트래킹 강점, 방대한 음식 DB</td>
+          </tr>
+          <tr>
+            <td class="app-name">MyFitnessPal<span class="sub">미국 · 가장 오래된 트래커</span></td>
+            <td class="num">20개 이상</td>
+            <td>추가됨 (바코드가 주력)</td>
+            <td>확인 안 됨</td>
+            <td>프리미엄 구독</td>
+            <td>가장 큰 음식 DB, 커뮤니티 규모 압도적</td>
+          </tr>
+          <tr>
+            <td class="app-name">Calzy<span class="sub">다국어 특화</span></td>
+            <td class="num">35개 이상<span style="display:block;font-size:11px;">조사 중 최다</span></td>
+            <td>확인 안 됨</td>
+            <td>확인 안 됨</td>
+            <td>확인 안 됨</td>
+            <td>언어 수 자체를 세일즈 포인트로 내세움</td>
+          </tr>
+          <tr>
+            <td class="app-name">HealthifyMe<span class="sub">인도</span></td>
+            <td class="num">인도 지역어 11개<span style="display:block;font-size:11px;">우리와 같은 숫자, 다른 시장</span></td>
+            <td>✅ 인도 음식 특화 인식</td>
+            <td>확인 안 됨</td>
+            <td>프리미엄</td>
+            <td>"11개 언어"라는 숫자만 같을 뿐 인도 국내 지역어 대상</td>
+          </tr>
+          <tr>
+            <td class="app-name">AI 사진 칼로리 계산기<span class="sub">한국 · SnapEat</span></td>
+            <td class="num">8개<span style="display:block;font-size:11px;">최근 추가</span></td>
+            <td>✅</td>
+            <td>확인 안 됨</td>
+            <td>확인 안 됨</td>
+            <td>한국 로컬 앱 중 다국어 확장에 가장 적극적</td>
+          </tr>
+          <tr>
+            <td class="app-name">다이어트AI<span class="sub">한국 · DietAI</span></td>
+            <td class="num">확인 안 됨</td>
+            <td>✅ 한식 특화 인식</td>
+            <td>확인 안 됨</td>
+            <td>확인 안 됨</td>
+            <td>"한국 최초 한식 특화" — 김치찌개·국밥·비빔밥 등 인식 정확도로 차별화</td>
+          </tr>
+          <tr>
+            <td class="app-name">カロリー計算<span class="sub">일본</span></td>
+            <td class="num">확인 안 됨<span style="display:block;font-size:11px;">2025.07 다국어 지원 추가</span></td>
+            <td>✅</td>
+            <td>확인 안 됨</td>
+            <td>확인 안 됨</td>
+            <td>일본 로컬 앱도 다국어 확장 흐름 중</td>
+          </tr>
+          <tr>
+            <td class="app-name">カロリAI<span class="sub">일본 · GPT-4o 기반</span></td>
+            <td class="num">단일 언어로 추정</td>
+            <td>✅</td>
+            <td>확인 안 됨</td>
+            <td>월 360엔</td>
+            <td>정확도 강조, 가격은 매우 저렴한 편</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>세 갈래로 나뉘는 시장</h2>
+    <div class="cards">
+
+      <div class="card">
+        <div class="card-head">
+          <h3>글로벌 대형 트래커 (Cal AI · Yazio · MyFitnessPal)</h3>
+          <span class="tag">언어 수는 압도적</span>
+        </div>
+        <p>
+          15~20개 이상의 언어를 이미 갖췄고 사용자 규모도 우리와 비교가 안 됩니다. 다만 이들은 원래
+          <b>바코드 스캔·수동 입력 기반의 방대한 음식 데이터베이스</b>가 핵심이고, 사진 AI 분석은 최근
+          추가된 보조 기능입니다. Cal AI는 특히 "사진 찍고 결과 보기"까지가 유료 구독 뒤에 있어, 무료로
+          바로 써볼 수 있는 우리 앱과는 진입장벽이 다릅니다.
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3>다국어 자체를 내세우는 앱 (Calzy · HealthifyMe)</h3>
+          <span class="tag">숫자 경쟁</span>
+        </div>
+        <p>
+          Calzy는 35개 이상 언어를 세일즈 포인트로 내세웁니다. HealthifyMe는 공교롭게도 우리와 같은
+          "11개 언어"지만, 대상이 인도 국내 지역어(힌디어·타밀어 등)라 시장이 완전히 다릅니다 — 국경을
+          넘는 이주노동자·여행자가 아니라 인도 국내 다언어 인구를 겨냥한 설계입니다.
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3>한국·일본 로컬 신생 앱 (SnapEat · DietAI · カロリー計算 · カロリAI)</h3>
+          <span class="tag">가장 가까운 체급</span>
+        </div>
+        <p>
+          규모상 우리 앱과 가장 비슷한 체급입니다. SnapEat(한국)은 최근 8개 언어를 추가하며 다국어 확장에
+          나섰고, カロリー計算(일본)도 2025년 7월 업데이트로 다국어 지원을 넣었습니다 — <b>로컬 신생
+          앱들도 다국어 쪽으로 움직이는 흐름</b>이 확인됩니다. DietAI는 언어보다 "한식 인식 정확도"로
+          차별화하는 전략을 택했는데, 이는 우리 앱이 참고할 만한 각도이기도 합니다.
+        </p>
+      </div>
+
+    </div>
+  </section>
+
+  <section>
+    <div class="highlight-card">
+      <h3>조사에서 확인 안 된, 우리만의 기능</h3>
+      <div class="sub">경쟁 앱 9곳 중 어디서도 언급되지 않음</div>
+      <p>
+        위에 조사한 어떤 앱의 설명에서도 <b>"남은 칼로리 예산 안에서 저녁 메뉴를 AI가 먼저 제안"</b>하거나
+        <b>"아직 저녁 전인데 이미 목표를 넘었다고 경고"</b>하는 기능은 나오지 않았습니다. 대부분의 앱은
+        칼로리·매크로를 "기록"하는 데 그치고, 그 기록을 바탕으로 오늘 나머지 시간에 뭘 해야 하는지까지
+        조언해주는 앱은 확인되지 않았습니다.
+      </p>
+      <ul>
+        <li>다른 앱들: 사진 찍기 → 칼로리 기록 → (끝)</li>
+        <li>우리 앱: 사진 찍기 → 칼로리 기록 → 오늘 페이스 판정 → 저녁 메뉴까지 AI가 제안</li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <h2>조사의 한계</h2>
+    <p class="limits">
+      이 조사는 웹 검색 결과와 앱스토어 설명 문구를 바탕으로 했고, 각 앱을 직접 설치해 사용해본 것은
+      아닙니다. 특히 Yazio·MyFitnessPal·Calzy의 "AI 저녁 코치" 유무는 검색 스니펫만으로는 확인이 안 돼
+      "확인 안 됨"으로 남겨뒀습니다 — 실제로는 있을 수도 있습니다. 의사결정에 쓰시려면 체급이 가장
+      비슷한 SnapEat·DietAI 정도는 직접 설치해서 확인해보시길 권합니다.
+    </p>
+  </section>
+
+  <section>
+    <h2>출처</h2>
+    <div class="sources">
+      <a href="https://apps.apple.com/app/cal-ai-calorie-tracker/id6480417616" target="_blank" rel="noopener">Cal AI — App Store</a>
+      <a href="https://www.jotform.com/ai/best-ai-calorie-tracker/" target="_blank" rel="noopener">The 5 best AI calorie trackers of 2026 — Jotform</a>
+      <a href="https://calzy-app.com/blog/best-ai-calorie-counter-apps" target="_blank" rel="noopener">Best AI Calorie Counter Apps in 2026 — Calzy</a>
+      <a href="https://www.mycallie.app/en/blog/best-ai-calorie-tracker-apps-2026" target="_blank" rel="noopener">Best AI Calorie Tracker Apps of 2026 — Callie</a>
+      <a href="https://calorierankings.com/reviews/yazio/" target="_blank" rel="noopener">Yazio Review (2026) — Calorie Rankings</a>
+      <a href="https://nutrola.app/en/blog/myfitnesspal-vs-yazio-which-is-better-2026" target="_blank" rel="noopener">MyFitnessPal vs. YAZIO 2026 — Nutrola</a>
+      <a href="https://play.google.com/store/apps/details?id=com.bciaiagent2.snapeat&hl=ko" target="_blank" rel="noopener">AI 사진 칼로리 계산기 (SnapEat) — Google Play</a>
+      <a href="https://play.google.com/store/apps/details?id=net.kernys.dietai&hl=ko" target="_blank" rel="noopener">다이어트AI (DietAI) — Google Play</a>
+      <a href="https://www.maff.go.jp/j/syokuiku/network/movie/0005.html" target="_blank" rel="noopener">カロミル — 農林水産省 소개</a>
+      <a href="https://www.caloriai.com/" target="_blank" rel="noopener">カロリAI 공식 사이트</a>
+      <a href="https://www.itmedia.co.jp/aiplus/articles/2407/23/news109.html" target="_blank" rel="noopener">カロリAI 소개 — ITmedia</a>
+    </div>
+  </section>
+
+  <footer>
+    오늘의 다이어트 다이어리 프로젝트 경쟁 조사 · Claude 작성 · 웹 검색 기반, 직접 사용 테스트는 포함되지 않음
+  </footer>
+
+</div>
