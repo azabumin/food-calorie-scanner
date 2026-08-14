@@ -9,8 +9,15 @@ const LANG_KEY = 'diet:lang';
 const PROFILE_KEY = 'diet:profile';
 const DEFAULT_GOAL = 1800;
 
+// Local calendar date, not UTC — toISOString() would still report "yesterday"
+// during the first few morning hours in UTC+ timezones (e.g. 00:00-09:00 in
+// Japan/Korea), silently merging that morning's meals into the previous day's log.
 export function todayKey(): string {
-  return new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 function logKey(date: string): string {

@@ -97,15 +97,20 @@ export default function HomeScreen() {
     saveProfile(profile);
   }, [profile, hydrated]);
 
-  // AI-generated coach advice and error text are captured in whatever language was
-  // active when they were fetched — they don't retroactively translate. Clear them on
-  // a language switch instead of leaving old-language text sitting under new-language
-  // labels; the meal log and any in-progress photo result are left alone since clearing
-  // those would discard the user's work, not just stale text.
+  // AI-generated content and error text are captured in whatever language was active
+  // when they were fetched — they don't retroactively translate. Clear them on a
+  // language switch instead of leaving old-language text sitting under new-language
+  // labels. This now also covers an in-progress (not-yet-logged) photo analysis —
+  // an earlier version deliberately left `result` alone to avoid discarding a
+  // rate-limited analysis, but real usage showed that leftover-language text is the
+  // more noticeable problem; already-logged meals are untouched since they're saved
+  // history, not a live fetch, and are expected to keep the language they were
+  // recorded in (like diary entries).
   useEffect(() => {
     setCoachAdvice(null);
     setCoachError(null);
     setErrorMsg(null);
+    setResult(null);
   }, [lang]);
 
   const consumed = useMemo(() => meals.reduce((sum, m) => sum + m.totalCalories, 0), [meals]);
