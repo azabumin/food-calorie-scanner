@@ -74,12 +74,14 @@ const ANALYSIS_SCHEMA = {
 
 function buildAnalysisPrompt(lang: string): string {
   const languageName = LANGUAGE_NAMES[lang] ?? LANGUAGE_NAMES.ko;
-  return `Analyze the food shown in this photo.
-1. Identify the name of the dish.
-2. List each visible ingredient or component item, estimating its portion, calories (kcal), protein (g), fat (g), and carbohydrates (g).
+  return `IMPORTANT: Every string value in your JSON response — dish name, item names, portions, confidence note — must be written in ${languageName}. This applies no matter what language the dish's usual name comes from, or what language any text/label visible in the photo is in. Do not use English unless ${languageName} is English.
+
+Analyze the food shown in this photo.
+1. Identify the name of the dish, written in ${languageName}.
+2. List each visible ingredient or component item (its name written in ${languageName}), estimating its portion, calories (kcal), protein (g), fat (g), and carbohydrates (g).
 3. Calculate the total calories and the total protein/fat/carbohydrates.
-4. Briefly note that this estimate may vary depending on the actual recipe, ingredients, and portion size.
-Respond entirely in ${languageName}. If the photo shows multiple dishes, include all of them.`;
+4. Briefly note, in ${languageName}, that this estimate may vary depending on the actual recipe, ingredients, and portion size.
+If the photo shows multiple dishes, include all of them. Reminder: respond entirely in ${languageName}.`;
 }
 
 const COACH_SCHEMA = {
@@ -122,7 +124,9 @@ function buildCoachPrompt(body: CoachRequestBody): string {
       ? body.meals.map((m) => `- ${m.dishName} (${m.calories}kcal)`).join('\n')
       : '(no meals logged yet)';
 
-  return `Act as the user's diet coach for today's meals.
+  return `IMPORTANT: Respond entirely in ${languageName}. Both dinnerAdvice and coachNote must be written in ${languageName}, even if any meal names listed below are written in another language. Do not use English unless ${languageName} is English.
+
+Act as the user's diet coach for today's meals.
 
 - Goal calories: ${body.goalCalories}kcal
 - Consumed so far: ${body.consumedCalories}kcal
