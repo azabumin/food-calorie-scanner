@@ -1,3 +1,4 @@
+import { Link } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -460,6 +461,21 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </View>
           )}
+
+          <View style={styles.footerLinks}>
+            <Link href="/pricing" style={styles.footerLink}>
+              <Text style={styles.footerLinkText}>料金プラン</Text>
+            </Link>
+            <Link href="/legal" style={styles.footerLink}>
+              <Text style={styles.footerLinkText}>特定商取引法に基づく表記</Text>
+            </Link>
+            <Link href="/terms" style={styles.footerLink}>
+              <Text style={styles.footerLinkText}>利用規約</Text>
+            </Link>
+            <Link href="/privacy" style={styles.footerLink}>
+              <Text style={styles.footerLinkText}>プライバシーポリシー</Text>
+            </Link>
+          </View>
         </>
       )}
 
@@ -709,5 +725,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.textMuted,
     lineHeight: 18,
+  },
+  footerLinks: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: SPACING.md,
+    marginTop: SPACING.sm,
+  },
+  footerLink: {
+    paddingVertical: 4,
+  },
+  footerLinkText: {
+    fontSize: 11,
+    color: COLORS.textMuted,
+    textDecorationLine: 'underline',
   },
 });

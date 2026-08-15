@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { COLORS, RADIUS, SPACING } from '../constants/theme';
@@ -11,6 +12,11 @@ type Props = {
 };
 
 export default function PremiumComingSoon({ t, title, body, onClose }: Props) {
+  function goToPricing() {
+    onClose();
+    router.push('/pricing');
+  }
+
   return (
     <View style={styles.backdrop}>
       <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onClose} />
@@ -19,6 +25,9 @@ export default function PremiumComingSoon({ t, title, body, onClose }: Props) {
         {!!body && <Text style={styles.lockedBody}>{body}</Text>}
         <Text style={styles.title}>{t.premium.comingSoonTitle}</Text>
         <Text style={styles.body}>{t.premium.comingSoonBody}</Text>
+        <TouchableOpacity style={styles.primaryButton} onPress={goToPricing}>
+          <Text style={styles.primaryButtonText}>料金プランを見る</Text>
+        </TouchableOpacity>
         <TouchableOpacity style={styles.closeButton} onPress={onClose}>
           <Text style={styles.closeButtonText}>{t.cancel}</Text>
         </TouchableOpacity>
@@ -70,12 +79,24 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     lineHeight: 20,
   },
+  primaryButton: {
+    backgroundColor: COLORS.primary,
+    borderRadius: RADIUS.pill,
+    paddingVertical: SPACING.md,
+    alignItems: 'center',
+    marginTop: SPACING.md,
+  },
+  primaryButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 15,
+  },
   closeButton: {
     backgroundColor: COLORS.chipBg,
     borderRadius: RADIUS.pill,
     paddingVertical: SPACING.md,
     alignItems: 'center',
-    marginTop: SPACING.md,
+    marginTop: SPACING.sm,
   },
   closeButtonText: {
     color: COLORS.primaryDark,
