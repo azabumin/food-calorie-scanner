@@ -1,9 +1,13 @@
-// `Env` (RATE_LIMIT_KV, ALLOWED_ORIGIN) comes from the generated worker-configuration.d.ts
-// (run `npx wrangler types` after changing wrangler.jsonc). ANTHROPIC_API_KEY is a secret,
-// so it isn't in that config-derived type — extend it here.
+import { handleLogin, handleMe, handleRegister } from './auth';
+
+// `Env` (RATE_LIMIT_KV, USERS_DB, ALLOWED_ORIGIN) comes from the generated
+// worker-configuration.d.ts (run `npx wrangler types` after changing wrangler.jsonc).
+// ANTHROPIC_API_KEY and AUTH_SECRET are secrets, so they aren't in that
+// config-derived type — extend it here.
 declare global {
   interface Env {
     ANTHROPIC_API_KEY: string;
+    AUTH_SECRET: string;
   }
 }
 
@@ -153,12 +157,25 @@ export default {
     }
 
     const url = new URL(request.url);
+    const ip = request.headers.get('CF-Connecting-IP') ?? 'unknown';
+
+    // Auth routes don't call Claude, so they're handled before (and don't consume)
+    // the AI-cost rate limiter below.
+    if (url.pathname === '/auth/register' && request.method === 'POST') {
+      return handleRegister(request, env, corsHeaders, ip);
+    }
+    if (url.pathname === '/auth/login' && request.method === 'POST') {
+      return handleLogin(request, env, corsHeaders, ip);
+    }
+    if (url.pathname === '/auth/me' && request.method === 'GET') {
+      return handleMe(request, env, corsHeaders);
+    }
+
     if (request.method !== 'POST' || (url.pathname !== '/analyze' && url.pathname !== '/coach')) {
       return jsonResponse({ error: 'not_found' }, 404, corsHeaders);
     }
 
-    // Both routes share one daily budget — they draw on the same Anthropic API key.
-    const ip = request.headers.get('CF-Connecting-IP') ?? 'unknown';
+    // Both /analyze and /coach share one daily budget — they draw on the same Anthropic API key.
     const today = new Date().toISOString().slice(0, 10);
     const ipKey = `ip:${ip}:${today}`;
     const globalKey = `global:${today}`;
@@ -303,8 +320,8 @@ async function handleCoach(
 
 function buildCorsHeaders(origin: string, env: Env): Record<string, string> {
   const headers: Record<string, string> = {
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   };
   if (origin === env.ALLOWED_ORIGIN || origin.startsWith('http://localhost:')) {
     headers['Access-Control-Allow-Origin'] = origin;

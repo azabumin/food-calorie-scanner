@@ -23,6 +23,8 @@ import TrendCard from '../components/TrendCard';
 import TrialBanner from '../components/TrialBanner';
 import { COLORS, RADIUS, SPACING } from '../constants/theme';
 import { AnalyzeError, analyzeFoodPhoto, getCoachAdvice } from '../lib/api';
+import { clearAuthToken, fetchMe, loadAuthToken } from '../lib/auth';
+import type { AuthUser } from '../lib/auth';
 import { detectDefaultLang, STRINGS } from '../lib/i18n';
 import { canAnalyze, coachLocked, getTier, trendDaysAllowed, trialDaysRemaining } from '../lib/membership';
 import {
@@ -81,10 +83,16 @@ export default function HomeScreen() {
   const [trendSeries, setTrendSeries] = useState<TrendDay[]>([]);
   const [achievement, setAchievement] = useState<AchievementTier>('encourage');
   const [premiumModal, setPremiumModal] = useState<{ title?: string; body?: string } | null>(null);
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
 
   const t = STRINGS[lang];
   const currentLanguage = LANGUAGES.find((l) => l.code === lang) ?? LANGUAGES[0];
-  const tier: Tier = trialStart ? getTier(trialStart, isPremium) : 'trial';
+  // A logged-in account's tier is judged server-side (account creation date +
+  // is_premium), so it survives a browser data wipe; guests fall back to the
+  // device-local trial start that ensureTrialStart() set on first launch.
+  const effectiveTrialStart = authUser ? authUser.createdAt.slice(0, 10) : trialStart;
+  const effectiveIsPremium = authUser ? authUser.isPremium : isPremium;
+  const tier: Tier = effectiveTrialStart ? getTier(effectiveTrialStart, effectiveIsPremium) : 'trial';
 
   function openPremiumModal(title?: string, body?: string) {
     setPremiumModal({ title, body });
@@ -95,16 +103,25 @@ export default function HomeScreen() {
   // initial state and clobber what's already in storage before this finishes.
   useEffect(() => {
     (async () => {
-      const [loadedGoal, loadedMeals, loadedLang, loadedProfile, loadedTrialStart, loadedIsPremium, loadedAnalyzeCount] =
-        await Promise.all([
-          loadGoalCalories(),
-          loadTodayLog(),
-          loadLang(),
-          loadProfile(),
-          ensureTrialStart(),
-          loadIsPremium(),
-          loadAnalyzeCountToday(),
-        ]);
+      const [
+        loadedGoal,
+        loadedMeals,
+        loadedLang,
+        loadedProfile,
+        loadedTrialStart,
+        loadedIsPremium,
+        loadedAnalyzeCount,
+        authToken,
+      ] = await Promise.all([
+        loadGoalCalories(),
+        loadTodayLog(),
+        loadLang(),
+        loadProfile(),
+        ensureTrialStart(),
+        loadIsPremium(),
+        loadAnalyzeCountToday(),
+        loadAuthToken(),
+      ]);
       setGoal(loadedGoal);
       setMeals(loadedMeals);
       setLang(loadedLang ?? detectDefaultLang());
@@ -112,6 +129,16 @@ export default function HomeScreen() {
       setTrialStart(loadedTrialStart);
       setIsPremium(loadedIsPremium);
       setAnalyzeCountToday(loadedAnalyzeCount);
+
+      if (authToken) {
+        const me = await fetchMe(authToken);
+        if (me) {
+          setAuthUser(me);
+        } else {
+          await clearAuthToken();
+        }
+      }
+
       setHydrated(true);
     })();
   }, []);
@@ -263,6 +290,11 @@ export default function HomeScreen() {
     setMeals((prev) => prev.filter((m) => m.id !== id));
   }
 
+  async function handleLogout() {
+    await clearAuthToken();
+    setAuthUser(null);
+  }
+
   function handleProfileSubmit(newProfile: UserProfile) {
     setProfile(newProfile);
     setGoal(calculateGoalCalories(newProfile));
@@ -293,14 +325,26 @@ export default function HomeScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <TouchableOpacity
-        style={styles.langSwitch}
-        onPress={() => setPickerOpen(true)}
-        accessibilityRole="button"
-        accessibilityLabel={t.chooseLanguage}
-      >
-        <Text style={styles.langSwitchText}>{currentLanguage.native} ▾</Text>
-      </TouchableOpacity>
+      <View style={styles.topBar}>
+        <TouchableOpacity
+          style={styles.langSwitch}
+          onPress={() => setPickerOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel={t.chooseLanguage}
+        >
+          <Text style={styles.langSwitchText}>{currentLanguage.native} ▾</Text>
+        </TouchableOpacity>
+
+        {authUser ? (
+          <TouchableOpacity style={styles.authLink} onPress={handleLogout}>
+            <Text style={styles.authLinkText} numberOfLines={1}>{`${authUser.email}さん・ログアウト`}</Text>
+          </TouchableOpacity>
+        ) : (
+          <Link href="/account" style={styles.authLink}>
+            <Text style={styles.authLinkText}>ログイン</Text>
+          </Link>
+        )}
+      </View>
 
       {pickerOpen && (
         <View style={styles.modalBackdrop}>
@@ -348,7 +392,7 @@ export default function HomeScreen() {
           <Text style={styles.title}>{t.app.title}</Text>
           <Text style={styles.subtitle}>{t.app.subtitle}</Text>
 
-          {tier === 'trial' && <TrialBanner daysLeft={trialDaysRemaining(trialStart)} t={t} />}
+          {tier === 'trial' && <TrialBanner daysLeft={trialDaysRemaining(effectiveTrialStart)} t={t} />}
 
           {!imageUri && (
             <>
@@ -503,14 +547,32 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     gap: SPACING.md,
   },
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: SPACING.sm,
+  },
   langSwitch: {
-    alignSelf: 'center',
     paddingVertical: SPACING.xs,
     paddingHorizontal: SPACING.md,
     borderRadius: RADIUS.pill,
     backgroundColor: COLORS.chipBg,
   },
   langSwitchText: {
+    color: COLORS.primaryDark,
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  authLink: {
+    paddingVertical: SPACING.xs,
+    paddingHorizontal: SPACING.md,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.chipBg,
+    maxWidth: 220,
+  },
+  authLinkText: {
     color: COLORS.primaryDark,
     fontWeight: '700',
     fontSize: 13,

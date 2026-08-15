@@ -12,7 +12,15 @@
   },
   "kv_namespaces": [
     { "binding": "RATE_LIMIT_KV", "id": "275633658dcb46419225fc6ab30a7241" }
+  ],
+  "d1_databases": [
+    {
+      "binding": "USERS_DB",
+      "database_name": "food-calorie-scanner-db",
+      "database_id": "8e7ddbe3-54b3-4174-986b-6068f321d78a"
+    }
   ]
-  // ANTHROPIC_API_KEY is NOT set here — it's a secret.
+  // ANTHROPIC_API_KEY and AUTH_SECRET are NOT set here — they're secrets.
   // Run: wrangler secret put ANTHROPIC_API_KEY
+  // Run: wrangler secret put AUTH_SECRET
 }
