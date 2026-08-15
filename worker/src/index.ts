@@ -323,7 +323,8 @@ function buildCorsHeaders(origin: string, env: Env): Record<string, string> {
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   };
-  if (origin === env.ALLOWED_ORIGIN || origin.startsWith('http://localhost:')) {
+  const allowedOrigins = env.ALLOWED_ORIGIN.split(',');
+  if (allowedOrigins.includes(origin) || origin.startsWith('http://localhost:')) {
     headers['Access-Control-Allow-Origin'] = origin;
   }
   return headers;

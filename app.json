@@ -8,8 +8,7 @@
     "scheme": "caloriescanner",
     "userInterfaceStyle": "light",
     "experiments": {
-      "typedRoutes": true,
-      "baseUrl": "/food-calorie-scanner"
+      "typedRoutes": true
     },
     "ios": {
       "supportsTablet": true,

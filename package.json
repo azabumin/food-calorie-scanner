@@ -31,7 +31,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "predeploy": "expo export -p web",
-    "deploy": "gh-pages --nojekyll -d dist"
+    "deploy": "gh-pages --nojekyll --cname dietdiary.jp -d dist"
   },
   "private": true
 }

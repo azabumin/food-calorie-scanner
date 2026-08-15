@@ -6,9 +6,11 @@
   "observability": {
     "enabled": true
   },
-  // GitHub Pages origin allowed to call this API. Update if the repo/user ever changes.
+  // Comma-separated origins allowed to call this API. Includes the GitHub Pages
+  // origin (pre-migration) and the dietdiary.jp custom domain (post-migration) —
+  // both stay allowed during the transition so neither deploy breaks the other.
   "vars": {
-    "ALLOWED_ORIGIN": "https://azabumin.github.io"
+    "ALLOWED_ORIGIN": "https://azabumin.github.io,https://dietdiary.jp,https://www.dietdiary.jp"
   },
   "kv_namespaces": [
     { "binding": "RATE_LIMIT_KV", "id": "275633658dcb46419225fc6ab30a7241" }
