@@ -15,24 +15,43 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import CoachCard from '../components/CoachCard';
 import MealList from '../components/MealList';
 import NutritionBalance from '../components/NutritionBalance';
+import PremiumComingSoon from '../components/PremiumComingSoon';
 import ProfileSetup from '../components/ProfileSetup';
 import SummaryCard from '../components/SummaryCard';
+import TrendCard from '../components/TrendCard';
+import TrialBanner from '../components/TrialBanner';
 import { COLORS, RADIUS, SPACING } from '../constants/theme';
 import { AnalyzeError, analyzeFoodPhoto, getCoachAdvice } from '../lib/api';
 import { detectDefaultLang, STRINGS } from '../lib/i18n';
+import { canAnalyze, coachLocked, getTier, trendDaysAllowed, trialDaysRemaining } from '../lib/membership';
 import {
+  ensureTrialStart,
+  loadAnalyzeCountToday,
   loadGoalCalories,
+  loadIsPremium,
   loadLang,
   loadProfile,
   loadTodayLog,
+  incrementAnalyzeCountToday,
   saveGoalCalories,
   saveLang,
   saveProfile,
   saveTodayLog,
 } from '../lib/storage';
 import { calculateGoalCalories } from '../lib/tdee';
+import { buildTrendSeries, computeAchievement } from '../lib/trend';
 import { LANGUAGES } from '../types';
-import type { AnalysisResult, CoachAdvice, DietStatus, Lang, MealEntry, UserProfile } from '../types';
+import type {
+  AchievementTier,
+  AnalysisResult,
+  CoachAdvice,
+  DietStatus,
+  Lang,
+  MealEntry,
+  Tier,
+  TrendDay,
+  UserProfile,
+} from '../types';
 
 const NEAR_GOAL_RATIO = 0.9;
 const DINNER_HOUR = 18;
@@ -55,27 +74,58 @@ export default function HomeScreen() {
   const [coachLoading, setCoachLoading] = useState(false);
   const [coachError, setCoachError] = useState<string | null>(null);
 
+  const [trialStart, setTrialStart] = useState('');
+  const [isPremium, setIsPremium] = useState(false);
+  const [analyzeCountToday, setAnalyzeCountToday] = useState(0);
+  const [trendSeries, setTrendSeries] = useState<TrendDay[]>([]);
+  const [achievement, setAchievement] = useState<AchievementTier>('encourage');
+  const [premiumModal, setPremiumModal] = useState<{ title?: string; body?: string } | null>(null);
+
   const t = STRINGS[lang];
   const currentLanguage = LANGUAGES.find((l) => l.code === lang) ?? LANGUAGES[0];
+  const tier: Tier = trialStart ? getTier(trialStart, isPremium) : 'trial';
+
+  function openPremiumModal(title?: string, body?: string) {
+    setPremiumModal({ title, body });
+  }
 
   // Load persisted goal + today's log + language once on mount. The save
   // effects below are gated on `hydrated` so they can't fire with the empty
   // initial state and clobber what's already in storage before this finishes.
   useEffect(() => {
     (async () => {
-      const [loadedGoal, loadedMeals, loadedLang, loadedProfile] = await Promise.all([
-        loadGoalCalories(),
-        loadTodayLog(),
-        loadLang(),
-        loadProfile(),
-      ]);
+      const [loadedGoal, loadedMeals, loadedLang, loadedProfile, loadedTrialStart, loadedIsPremium, loadedAnalyzeCount] =
+        await Promise.all([
+          loadGoalCalories(),
+          loadTodayLog(),
+          loadLang(),
+          loadProfile(),
+          ensureTrialStart(),
+          loadIsPremium(),
+          loadAnalyzeCountToday(),
+        ]);
       setGoal(loadedGoal);
       setMeals(loadedMeals);
       setLang(loadedLang ?? detectDefaultLang());
       setProfile(loadedProfile);
+      setTrialStart(loadedTrialStart);
+      setIsPremium(loadedIsPremium);
+      setAnalyzeCountToday(loadedAnalyzeCount);
       setHydrated(true);
     })();
   }, []);
+
+  // Rebuild the trend series whenever today's log, the goal, or the tier
+  // (which determines how many days of history are allowed) changes.
+  useEffect(() => {
+    if (!hydrated) return;
+    (async () => {
+      const days = trendDaysAllowed(tier);
+      const series = await buildTrendSeries(days, goal, meals);
+      setTrendSeries(series);
+      setAchievement(computeAchievement(series));
+    })();
+  }, [hydrated, meals, goal, tier]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -111,6 +161,7 @@ export default function HomeScreen() {
     setCoachError(null);
     setErrorMsg(null);
     setResult(null);
+    setPremiumModal(null);
   }, [lang]);
 
   const consumed = useMemo(() => meals.reduce((sum, m) => sum + m.totalCalories, 0), [meals]);
@@ -149,6 +200,8 @@ export default function HomeScreen() {
       }
       const analysis = await analyzeFoodPhoto(manipulated.base64, 'image/jpeg', lang);
       setResult(analysis);
+      await incrementAnalyzeCountToday();
+      setAnalyzeCountToday((prev) => prev + 1);
     } catch (e) {
       setErrorMsg(e instanceof AnalyzeError ? e.message : t.errors.analyzeGeneric);
     } finally {
@@ -157,6 +210,10 @@ export default function HomeScreen() {
   }
 
   async function handlePick(source: 'camera' | 'library') {
+    if (!canAnalyze(tier, analyzeCountToday)) {
+      openPremiumModal(t.premium.analyzeLockedTitle, t.premium.analyzeLockedBody);
+      return;
+    }
     setErrorMsg(null);
     try {
       const permission =
@@ -290,6 +347,8 @@ export default function HomeScreen() {
           <Text style={styles.title}>{t.app.title}</Text>
           <Text style={styles.subtitle}>{t.app.subtitle}</Text>
 
+          {tier === 'trial' && <TrialBanner daysLeft={trialDaysRemaining(trialStart)} t={t} />}
+
           {!imageUri && (
             <>
               <SummaryCard
@@ -317,11 +376,20 @@ export default function HomeScreen() {
 
               <MealList meals={meals} onDelete={deleteMeal} lang={lang} t={t} />
               <NutritionBalance nutrients={nutrientTotals} t={t} />
+              <TrendCard
+                series={trendSeries}
+                achievement={achievement}
+                locked={tier === 'free'}
+                onUpgradePress={() => openPremiumModal()}
+                t={t}
+              />
               <CoachCard
                 advice={coachAdvice}
                 loading={coachLoading}
                 errorMsg={coachError}
                 onRequest={requestCoachAdvice}
+                locked={coachLocked(tier)}
+                onUpgradePress={() => openPremiumModal()}
                 t={t}
               />
             </>
@@ -393,6 +461,15 @@ export default function HomeScreen() {
             </View>
           )}
         </>
+      )}
+
+      {premiumModal && (
+        <PremiumComingSoon
+          t={t}
+          title={premiumModal.title}
+          body={premiumModal.body}
+          onClose={() => setPremiumModal(null)}
+        />
       )}
     </ScrollView>
   );

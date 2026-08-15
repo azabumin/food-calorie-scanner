@@ -90,6 +90,26 @@ export type Strings = {
     validationError: string;
     editLink: string;
   };
+  trial: {
+    daysLeft: (days: number) => string;
+  };
+  trend: {
+    title: string;
+    emptyText: string;
+    lockedTeaser: string;
+    achievementPraise: string;
+    achievementMild: string;
+    achievementEncourage: string;
+  };
+  premium: {
+    analyzeLockedTitle: string;
+    analyzeLockedBody: string;
+    coachLockedTitle: string;
+    coachLockedBody: string;
+    upgradeButton: string;
+    comingSoonTitle: string;
+    comingSoonBody: string;
+  };
   chooseLanguage: string;
   cancel: string;
 };
@@ -183,6 +203,26 @@ const ko: Strings = {
     submitButton: '목표 칼로리 계산하기',
     validationError: '모든 항목을 올바르게 입력해 주세요.',
     editLink: '프로필 수정',
+  },
+  trial: {
+    daysLeft: (days) => `무료 체험 — ${days}일 남음`,
+  },
+  trend: {
+    title: '최근 7일 기록',
+    emptyText: '아직 기록이 없어요. 식사를 기록하면 여기에 표시됩니다.',
+    lockedTeaser: '30일·90일 기록은 프리미엄에서 확인하세요 🔒',
+    achievementPraise: '잘하고 계세요 — 대부분의 날에 목표를 지키고 있어요!',
+    achievementMild: '거의 다 왔어요 — 며칠만 더 신경 쓰면 페이스를 되찾을 수 있어요.',
+    achievementEncourage: '힘든 기간이었지만, 기록을 남긴 것만으로도 의미 있는 진전이에요. 계속 해봐요.',
+  },
+  premium: {
+    analyzeLockedTitle: '오늘의 무료 분석을 모두 사용했어요',
+    analyzeLockedBody: '내일 다시 무료로 분석하시거나, 프리미엄으로 무제한 이용해보세요.',
+    coachLockedTitle: 'AI 저녁 코치는 프리미엄 전용 기능이에요',
+    coachLockedBody: '프리미엄으로 업그레이드하면 남은 칼로리에 맞춘 저녁 메뉴를 제안받을 수 있어요.',
+    upgradeButton: '프리미엄 알아보기',
+    comingSoonTitle: '프리미엄, 곧 만나요',
+    comingSoonBody: '무제한 사진 분석, AI 저녁 코치, 30일·90일 기록이 곧 제공됩니다. 가입은 이메일로 받는 링크 하나로 끝나요 — 비밀번호를 외울 필요도 없어요.',
   },
   chooseLanguage: '언어 선택',
   cancel: '취소',
@@ -278,6 +318,26 @@ const ja: Strings = {
     validationError: 'すべての項目を正しく入力してください。',
     editLink: 'プロフィールを編集',
   },
+  trial: {
+    daysLeft: (days) => `無料お試し — 残り${days}日`,
+  },
+  trend: {
+    title: '過去7日間の記録',
+    emptyText: 'まだ記録がありません。食事を記録するとここに表示されます。',
+    lockedTeaser: '30日・90日分の記録はプレミアムでご覧いただけます 🔒',
+    achievementPraise: '順調です — ほとんどの日で目標を守れています!',
+    achievementMild: 'もう少しです — あと数日頑張れば元のペースに戻れます。',
+    achievementEncourage: '大変な時期でしたね。それでも記録を続けているだけで立派な前進です。この調子で。',
+  },
+  premium: {
+    analyzeLockedTitle: '本日の無料分析は使い切りました',
+    analyzeLockedBody: '明日また無料で分析できます。プレミアムなら無制限にご利用いただけます。',
+    coachLockedTitle: 'AI夕食コーチはプレミアム限定機能です',
+    coachLockedBody: 'プレミアムにアップグレードすると、残りカロリーに合わせた夕食メニューを提案します。',
+    upgradeButton: 'プレミアムを見る',
+    comingSoonTitle: 'プレミアム、まもなく登場',
+    comingSoonBody: '無制限の写真分析、AI夕食コーチ、30日・90日分の記録がまもなく利用可能になります。登録はメールに届くリンクをクリックするだけ — パスワードを覚える必要もありません。',
+  },
   chooseLanguage: '言語を選択',
   cancel: 'キャンセル',
 };
@@ -371,6 +431,26 @@ const en: Strings = {
     submitButton: 'Calculate My Goal',
     validationError: 'Please fill in all fields with valid values.',
     editLink: 'Edit Profile',
+  },
+  trial: {
+    daysLeft: (days) => `Free trial — ${days} day${days === 1 ? '' : 's'} left`,
+  },
+  trend: {
+    title: '7-Day History',
+    emptyText: 'No history yet — log a meal to get started.',
+    lockedTeaser: 'See 30 & 90-day history with Premium 🔒',
+    achievementPraise: "Great work — you're hitting your goal most days!",
+    achievementMild: "You're getting there — a few more good days and you'll be right on track.",
+    achievementEncourage: "It's been a tough stretch, but every meal you log is progress. Keep going.",
+  },
+  premium: {
+    analyzeLockedTitle: "Today's free analysis is used up",
+    analyzeLockedBody: 'Come back tomorrow for another free scan, or go Premium for unlimited analysis.',
+    coachLockedTitle: 'The AI dinner coach is a Premium feature',
+    coachLockedBody: 'Upgrade to get personalized dinner suggestions based on your remaining calories.',
+    upgradeButton: 'See Premium',
+    comingSoonTitle: 'Premium is almost here',
+    comingSoonBody: 'Unlimited photo analysis, the AI dinner coach, and 30/90-day history are coming soon. Sign-up will be as simple as a magic link sent to your email — no password to remember.',
   },
   chooseLanguage: 'Choose Language',
   cancel: 'Cancel',
@@ -466,6 +546,26 @@ const vi: Strings = {
     validationError: 'Vui lòng điền đầy đủ và chính xác tất cả các mục.',
     editLink: 'Chỉnh Sửa Hồ Sơ',
   },
+  trial: {
+    daysLeft: (days) => `Dùng thử miễn phí — còn ${days} ngày`,
+  },
+  trend: {
+    title: 'Lịch Sử 7 Ngày Qua',
+    emptyText: 'Chưa có lịch sử nào. Ghi lại bữa ăn để bắt đầu.',
+    lockedTeaser: 'Xem lịch sử 30 và 90 ngày với gói Premium 🔒',
+    achievementPraise: 'Làm tốt lắm — bạn đang đạt mục tiêu hầu hết các ngày!',
+    achievementMild: 'Sắp được rồi — chỉ cần thêm vài ngày tốt nữa là bạn sẽ trở lại đúng nhịp độ.',
+    achievementEncourage: 'Đây là giai đoạn khó khăn, nhưng mỗi bữa ăn bạn ghi lại đều là một bước tiến. Cố lên nhé.',
+  },
+  premium: {
+    analyzeLockedTitle: 'Bạn đã dùng hết lượt phân tích miễn phí hôm nay',
+    analyzeLockedBody: 'Hãy quay lại vào ngày mai để phân tích miễn phí, hoặc nâng cấp Premium để dùng không giới hạn.',
+    coachLockedTitle: 'Huấn luyện viên bữa tối AI là tính năng Premium',
+    coachLockedBody: 'Nâng cấp để nhận gợi ý bữa tối phù hợp với lượng calo còn lại của bạn.',
+    upgradeButton: 'Xem Premium',
+    comingSoonTitle: 'Premium sắp ra mắt',
+    comingSoonBody: 'Phân tích ảnh không giới hạn, huấn luyện viên bữa tối AI, và lịch sử 30/90 ngày sắp có mặt. Đăng ký chỉ đơn giản bằng một liên kết gửi qua email — không cần nhớ mật khẩu.',
+  },
   chooseLanguage: 'Chọn Ngôn Ngữ',
   cancel: 'Hủy',
 };
@@ -559,6 +659,26 @@ const zh: Strings = {
     submitButton: '计算我的目标',
     validationError: '请正确填写所有项目。',
     editLink: '编辑个人资料',
+  },
+  trial: {
+    daysLeft: (days) => `免费试用 — 剩余${days}天`,
+  },
+  trend: {
+    title: '近7天记录',
+    emptyText: '暂无记录。记录一餐即可开始。',
+    lockedTeaser: '升级到高级版即可查看30天和90天的记录 🔒',
+    achievementPraise: '做得很好 — 你大部分时间都达成了目标!',
+    achievementMild: '快到了 — 再坚持几天状态就会回到正轨。',
+    achievementEncourage: '这段时间不容易，但你坚持记录本身就是进步。继续加油。',
+  },
+  premium: {
+    analyzeLockedTitle: '今天的免费分析次数已用完',
+    analyzeLockedBody: '明天可以再次免费分析，或升级高级版无限使用。',
+    coachLockedTitle: 'AI晚餐教练是高级版专属功能',
+    coachLockedBody: '升级后可根据剩余卡路里获得个性化晚餐建议。',
+    upgradeButton: '了解高级版',
+    comingSoonTitle: '高级版即将上线',
+    comingSoonBody: '无限次照片分析、AI晚餐教练、30天/90天记录即将推出。注册只需点击发送到邮箱的链接 — 无需记密码。',
   },
   chooseLanguage: '选择语言',
   cancel: '取消',
@@ -654,6 +774,26 @@ const id: Strings = {
     validationError: 'Silakan isi semua kolom dengan benar.',
     editLink: 'Ubah Profil',
   },
+  trial: {
+    daysLeft: (days) => `Uji coba gratis — sisa ${days} hari`,
+  },
+  trend: {
+    title: 'Riwayat 7 Hari Terakhir',
+    emptyText: 'Belum ada riwayat. Catat makanan untuk memulai.',
+    lockedTeaser: 'Lihat riwayat 30 & 90 hari dengan Premium 🔒',
+    achievementPraise: 'Kerja bagus — Anda mencapai target hampir setiap hari!',
+    achievementMild: 'Hampir sampai — beberapa hari baik lagi dan Anda akan kembali ke jalur yang benar.',
+    achievementEncourage: 'Ini masa yang berat, tapi setiap makanan yang Anda catat adalah kemajuan. Terus semangat.',
+  },
+  premium: {
+    analyzeLockedTitle: 'Analisis gratis hari ini sudah habis',
+    analyzeLockedBody: 'Kembali lagi besok untuk analisis gratis, atau upgrade ke Premium untuk analisis tanpa batas.',
+    coachLockedTitle: 'Pelatih makan malam AI adalah fitur Premium',
+    coachLockedBody: 'Upgrade untuk mendapatkan saran makan malam yang disesuaikan dengan sisa kalori Anda.',
+    upgradeButton: 'Lihat Premium',
+    comingSoonTitle: 'Premium segera hadir',
+    comingSoonBody: 'Analisis foto tanpa batas, pelatih makan malam AI, dan riwayat 30/90 hari akan segera tersedia. Daftar cukup dengan tautan yang dikirim ke email — tanpa perlu mengingat kata sandi.',
+  },
   chooseLanguage: 'Pilih Bahasa',
   cancel: 'Batal',
 };
@@ -747,6 +887,26 @@ const tl: Strings = {
     submitButton: 'Kalkulahin ang Target Ko',
     validationError: 'Pakisagutan nang tama ang lahat ng patlang.',
     editLink: 'I-edit ang Profile',
+  },
+  trial: {
+    daysLeft: (days) => `Libreng subok — ${days} araw na lang`,
+  },
+  trend: {
+    title: 'Nakaraang 7 Araw',
+    emptyText: 'Wala pang history. Mag-log ng pagkain para magsimula.',
+    lockedTeaser: 'Tingnan ang 30 at 90 araw na history sa Premium 🔒',
+    achievementPraise: 'Ang galing — naaabot mo ang target mo halos araw-araw!',
+    achievementMild: 'Malapit ka na — kaunti pang magagandang araw at babalik ka sa tamang track.',
+    achievementEncourage: 'Mahirap ang panahong ito, pero bawat pagkaing ni-log mo ay pag-unlad. Ituloy mo lang.',
+  },
+  premium: {
+    analyzeLockedTitle: 'Naubos na ang libreng pagsusuri mo ngayong araw',
+    analyzeLockedBody: 'Bumalik bukas para sa isa pang libreng pagsusuri, o mag-Premium para sa walang limitasyong paggamit.',
+    coachLockedTitle: 'Ang AI dinner coach ay Premium feature',
+    coachLockedBody: 'Mag-upgrade para makakuha ng mga mungkahi sa hapunan batay sa natitira mong calories.',
+    upgradeButton: 'Tingnan ang Premium',
+    comingSoonTitle: 'Malapit nang dumating ang Premium',
+    comingSoonBody: 'Walang limitasyong pagsusuri ng larawan, AI dinner coach, at 30/90 araw na history ay malapit nang available. Ang pag-sign up ay kasing-simple ng link na ipapadala sa email mo — walang password na aalalahanin.',
   },
   chooseLanguage: 'Pumili ng Wika',
   cancel: 'Kanselahin',
@@ -842,6 +1002,26 @@ const th: Strings = {
     validationError: 'กรุณากรอกข้อมูลให้ครบและถูกต้องทุกช่อง',
     editLink: 'แก้ไขโปรไฟล์',
   },
+  trial: {
+    daysLeft: (days) => `ทดลองใช้ฟรี — เหลืออีก ${days} วัน`,
+  },
+  trend: {
+    title: 'ประวัติ 7 วันที่ผ่านมา',
+    emptyText: 'ยังไม่มีประวัติ บันทึกมื้ออาหารเพื่อเริ่มต้น',
+    lockedTeaser: 'ดูประวัติ 30 และ 90 วันได้ด้วย Premium 🔒',
+    achievementPraise: 'เยี่ยมมาก — คุณทำได้ตามเป้าหมายเกือบทุกวัน!',
+    achievementMild: 'ใกล้แล้ว — อีกไม่กี่วันที่ทำได้ดีคุณจะกลับมาอยู่ในเป้าหมาย',
+    achievementEncourage: 'ช่วงนี้อาจจะยากหน่อย แต่ทุกมื้อที่คุณบันทึกคือความก้าวหน้า สู้ต่อไปนะ',
+  },
+  premium: {
+    analyzeLockedTitle: 'คุณใช้สิทธิ์วิเคราะห์ฟรีวันนี้หมดแล้ว',
+    analyzeLockedBody: 'กลับมาวิเคราะห์ฟรีอีกครั้งพรุ่งนี้ หรืออัปเกรดเป็น Premium เพื่อใช้งานได้ไม่จำกัด',
+    coachLockedTitle: 'โค้ชมื้อเย็น AI เป็นฟีเจอร์สำหรับ Premium',
+    coachLockedBody: 'อัปเกรดเพื่อรับคำแนะนำมื้อเย็นที่เหมาะกับแคลอรี่ที่เหลือของคุณ',
+    upgradeButton: 'ดู Premium',
+    comingSoonTitle: 'Premium กำลังจะมาเร็วๆ นี้',
+    comingSoonBody: 'การวิเคราะห์รูปภาพไม่จำกัด โค้ชมื้อเย็น AI และประวัติ 30/90 วันกำลังจะมาเร็วๆ นี้ การสมัครง่ายแค่คลิกลิงก์ที่ส่งไปยังอีเมลของคุณ — ไม่ต้องจำรหัสผ่าน',
+  },
   chooseLanguage: 'เลือกภาษา',
   cancel: 'ยกเลิก',
 };
@@ -935,6 +1115,26 @@ const my: Strings = {
     submitButton: 'ကျွန်ုပ်၏ ပန်းတိုင် တွက်ချက်ရန်',
     validationError: 'ကျေးဇူးပြု၍ အကွက်အားလုံးကို မှန်ကန်စွာ ဖြည့်ပါ။',
     editLink: 'ကိုယ်ရေးအချက်အလက် ပြင်ဆင်ရန်',
+  },
+  trial: {
+    daysLeft: (days) => `အခမဲ့ စမ်းသုံးရန် — ${days} ရက် ကျန်သည်`,
+  },
+  trend: {
+    title: 'လွန်ခဲ့သော ၇ ရက် မှတ်တမ်း',
+    emptyText: 'မှတ်တမ်း မရှိသေးပါ။ အစားအစာ မှတ်တမ်းတင်ပြီး စတင်ပါ။',
+    lockedTeaser: '၃၀ ရက်နှင့် ၉၀ ရက် မှတ်တမ်းများကို Premium တွင် ကြည့်ရှုနိုင်ပါသည် 🔒',
+    achievementPraise: 'သိပ်ကောင်းပါတယ် — နေ့အများစုမှာ ပန်းတိုင်ကို ရောက်နေပါတယ်!',
+    achievementMild: 'နီးနီးရောက်ပါပြီ — နောက်ထပ် ရက်အနည်းငယ် ကြိုးစားရင် ပြန်လည် လမ်းကြောင်းမှန် ရောက်ပါလိမ့်မယ်။',
+    achievementEncourage: 'ခက်ခဲတဲ့ ကာလတစ်ခု ဖြစ်ပေမယ့်၊ မှတ်တမ်းတင်တိုင်း တိုးတက်မှု တစ်ခု ဖြစ်ပါတယ်။ ဆက်ကြိုးစားပါ။',
+  },
+  premium: {
+    analyzeLockedTitle: 'ယနေ့အတွက် အခမဲ့ စိစစ်မှု ပြီးဆုံးသွားပါပြီ',
+    analyzeLockedBody: 'မနက်ဖြန် အခမဲ့ ထပ်စိစစ်နိုင်ပါသည် သို့မဟုတ် ကန့်သတ်မထားဘဲ သုံးရန် Premium သို့ အဆင့်မြှင့်ပါ။',
+    coachLockedTitle: 'AI ညစာ နည်းပြသည် Premium အင်္ဂါရပ် ဖြစ်ပါသည်',
+    coachLockedBody: 'ကျန်ရှိသော ကယ်လိုရီနှင့် ကိုက်ညီသော ညစာ အကြံပြုချက်များ ရယူရန် အဆင့်မြှင့်ပါ။',
+    upgradeButton: 'Premium ကြည့်ရန်',
+    comingSoonTitle: 'Premium မကြာမီ ရောက်ရှိလာပါမည်',
+    comingSoonBody: 'ကန့်သတ်မထားသော ဓာတ်ပုံ စိစစ်မှု၊ AI ညစာ နည်းပြနှင့် ၃၀/၉၀ ရက် မှတ်တမ်းများ မကြာမီ ရရှိနိုင်ပါမည်။ စာရင်းသွင်းရန် အီးမေးလ်သို့ ပေးပို့သော လင့်ခ်ကို နှိပ်ရုံသာ — စကားဝှက် မှတ်ထားစရာ မလိုပါ။',
   },
   chooseLanguage: 'ဘာသာစကား ရွေးရန်',
   cancel: 'ပယ်ဖျက်ရန်',
@@ -1030,6 +1230,26 @@ const ne: Strings = {
     validationError: 'कृपया सबै फिल्डहरू सही तरिकाले भर्नुहोस्।',
     editLink: 'प्रोफाइल सम्पादन गर्नुहोस्',
   },
+  trial: {
+    daysLeft: (days) => `निःशुल्क परीक्षण — ${days} दिन बाँकी`,
+  },
+  trend: {
+    title: 'विगत ७ दिनको इतिहास',
+    emptyText: 'अहिलेसम्म इतिहास छैन। सुरु गर्न खाना रेकर्ड गर्नुहोस्।',
+    lockedTeaser: 'Premium मा ३० र ९० दिनको इतिहास हेर्नुहोस् 🔒',
+    achievementPraise: 'राम्रो गर्दै हुनुहुन्छ — तपाईं धेरैजसो दिनमा लक्ष्य पूरा गर्दै हुनुहुन्छ!',
+    achievementMild: 'लगभग पुग्नुभयो — केही थप राम्रो दिनहरूले तपाईं फेरि ट्र्याकमा फर्किनुहुनेछ।',
+    achievementEncourage: 'यो गाह्रो समय थियो, तर तपाईंले रेकर्ड गरेको हरेक खाना प्रगति नै हो। जारी राख्नुहोस्।',
+  },
+  premium: {
+    analyzeLockedTitle: 'आजको निःशुल्क विश्लेषण सकियो',
+    analyzeLockedBody: 'भोलि फेरि निःशुल्क विश्लेषण गर्न फर्किनुहोस्, वा असीमित प्रयोगका लागि Premium मा अपग्रेड गर्नुहोस्।',
+    coachLockedTitle: 'AI डिनर कोच Premium सुविधा हो',
+    coachLockedBody: 'तपाईंको बाँकी क्यालोरीअनुसार डिनर सुझाव पाउन अपग्रेड गर्नुहोस्।',
+    upgradeButton: 'Premium हेर्नुहोस्',
+    comingSoonTitle: 'Premium चाँडै आउँदैछ',
+    comingSoonBody: 'असीमित फोटो विश्लेषण, AI डिनर कोच, र ३०/९० दिनको इतिहास चाँडै उपलब्ध हुनेछ। साइन अप गर्न इमेलमा पठाइएको लिंकमा क्लिक गरे पुग्छ — पासवर्ड सम्झनु पर्दैन।',
+  },
   chooseLanguage: 'भाषा छान्नुहोस्',
   cancel: 'रद्द गर्नुहोस्',
 };
@@ -1123,6 +1343,26 @@ const pt: Strings = {
     submitButton: 'Calcular Minha Meta',
     validationError: 'Preencha todos os campos corretamente.',
     editLink: 'Editar Perfil',
+  },
+  trial: {
+    daysLeft: (days) => `Teste gratuito — ${days} dia(s) restante(s)`,
+  },
+  trend: {
+    title: 'Histórico dos Últimos 7 Dias',
+    emptyText: 'Ainda não há histórico. Registre uma refeição para começar.',
+    lockedTeaser: 'Veja o histórico de 30 e 90 dias com o Premium 🔒',
+    achievementPraise: 'Muito bem — você está batendo sua meta na maioria dos dias!',
+    achievementMild: 'Quase lá — mais alguns dias bons e você volta ao ritmo certo.',
+    achievementEncourage: 'Foi um período difícil, mas cada refeição registrada é um progresso. Continue assim.',
+  },
+  premium: {
+    analyzeLockedTitle: 'Sua análise gratuita de hoje acabou',
+    analyzeLockedBody: 'Volte amanhã para outra análise gratuita, ou assine o Premium para uso ilimitado.',
+    coachLockedTitle: 'O coach de jantar por IA é um recurso Premium',
+    coachLockedBody: 'Assine o Premium para receber sugestões de jantar personalizadas com base nas calorias restantes.',
+    upgradeButton: 'Ver Premium',
+    comingSoonTitle: 'O Premium está quase chegando',
+    comingSoonBody: 'Análise de fotos ilimitada, coach de jantar por IA e histórico de 30/90 dias estarão disponíveis em breve. O cadastro será simples como clicar em um link enviado por e-mail — sem senha para lembrar.',
   },
   chooseLanguage: 'Escolher Idioma',
   cancel: 'Cancelar',

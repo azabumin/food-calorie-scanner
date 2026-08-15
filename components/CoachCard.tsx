@@ -9,10 +9,25 @@ type Props = {
   loading: boolean;
   errorMsg: string | null;
   onRequest: () => void;
+  locked?: boolean;
+  onUpgradePress?: () => void;
   t: Strings;
 };
 
-export default function CoachCard({ advice, loading, errorMsg, onRequest, t }: Props) {
+export default function CoachCard({ advice, loading, errorMsg, onRequest, locked, onUpgradePress, t }: Props) {
+  if (locked) {
+    return (
+      <View style={styles.card}>
+        <Text style={styles.title}>{t.coach.title}</Text>
+        <Text style={styles.lockedTitle}>{t.premium.coachLockedTitle}</Text>
+        <Text style={styles.subtitle}>{t.premium.coachLockedBody}</Text>
+        <TouchableOpacity style={styles.button} onPress={onUpgradePress}>
+          <Text style={styles.buttonText}>{t.premium.upgradeButton}</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.card}>
       <Text style={styles.title}>{t.coach.title}</Text>
@@ -67,6 +82,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.textMuted,
     lineHeight: 17,
+  },
+  lockedTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.primaryDark,
   },
   button: {
     backgroundColor: COLORS.primary,

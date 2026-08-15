@@ -73,3 +73,17 @@ export type UserProfile = {
   activityLevel: ActivityLevel;
   goalRate: GoalRate;
 };
+
+// Membership tier — determines feature access. 'premium' is unreachable until
+// payment (phase 2) sets isPremium; today it only ever resolves to trial/free.
+export type Tier = 'trial' | 'free' | 'premium';
+
+export type TrendDay = {
+  date: string;
+  consumedCalories: number;
+  goalCalories: number;
+  status: DietStatus;
+  hasData: boolean;
+};
+
+export type AchievementTier = 'praise' | 'mild' | 'encourage';
