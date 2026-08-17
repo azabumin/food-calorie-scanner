@@ -4,6 +4,7 @@ import {
   ActivityIndicator,
   FlatList,
   Image,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -244,13 +245,20 @@ export default function HomeScreen() {
     }
     setErrorMsg(null);
     try {
-      const permission =
-        source === 'camera'
-          ? await ImagePicker.requestCameraPermissionsAsync()
-          : await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) {
-        setErrorMsg(source === 'camera' ? t.errors.cameraPermission : t.errors.libraryPermission);
-        return;
+      // On web, requesting camera permission as a separate awaited call breaks
+      // the browser's user-activation chain before launchCameraAsync runs, so
+      // the browser silently blocks the camera with no error shown. Skip the
+      // separate request there and let launchCameraAsync trigger the browser's
+      // own camera permission prompt directly, right on the button tap.
+      if (Platform.OS !== 'web' || source === 'library') {
+        const permission =
+          source === 'camera'
+            ? await ImagePicker.requestCameraPermissionsAsync()
+            : await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permission.granted) {
+          setErrorMsg(source === 'camera' ? t.errors.cameraPermission : t.errors.libraryPermission);
+          return;
+        }
       }
 
       const pickerResult =
