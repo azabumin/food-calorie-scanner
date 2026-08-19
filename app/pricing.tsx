@@ -6,10 +6,7 @@ import { COLORS, RADIUS, SPACING } from '../constants/theme';
 import { PRICING } from '../constants/company';
 import { FREE_DAILY_ANALYZE_LIMIT, FREE_TREND_DAYS, PREMIUM_TREND_DAYS } from '../lib/membership';
 
-type Plan = 'monthly' | 'annual';
 type Step = 'plans' | 'confirm' | 'pending';
-
-const ANNUAL_SAVINGS_PERCENT = Math.round(100 - (PRICING.annualYen / (PRICING.monthlyYen * 12)) * 100);
 
 function formatTrialEndDate(): string {
   const d = new Date();
@@ -19,10 +16,6 @@ function formatTrialEndDate(): string {
 
 export default function PricingScreen() {
   const [step, setStep] = useState<Step>('plans');
-  const [plan, setPlan] = useState<Plan>('monthly');
-
-  const price = plan === 'monthly' ? PRICING.monthlyYen : PRICING.annualYen;
-  const cadenceLabel = plan === 'monthly' ? '毎月' : '毎年';
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -56,32 +49,18 @@ export default function PricingScreen() {
 
       {step === 'plans' && (
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>プランを選択</Text>
+          <Text style={styles.cardTitle}>プレミアムプラン</Text>
           <View style={styles.planRow}>
-            <TouchableOpacity
-              style={[styles.planButton, plan === 'monthly' && styles.planButtonActive]}
-              onPress={() => setPlan('monthly')}
-            >
-              <Text style={[styles.planButtonText, plan === 'monthly' && styles.planButtonTextActive]}>
-                月額プラン
-              </Text>
-              <Text style={[styles.planPrice, plan === 'monthly' && styles.planButtonTextActive]}>
+            <View style={[styles.planButton, styles.planButtonActive]}>
+              <Text style={[styles.planButtonText, styles.planButtonTextActive]}>月額プラン</Text>
+              <Text style={[styles.planPrice, styles.planButtonTextActive]}>
                 {PRICING.monthlyYen}円 / 月
               </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.planButton, plan === 'annual' && styles.planButtonActive]}
-              onPress={() => setPlan('annual')}
-            >
-              <Text style={[styles.planButtonText, plan === 'annual' && styles.planButtonTextActive]}>
-                年額プラン
-              </Text>
-              <Text style={[styles.planPrice, plan === 'annual' && styles.planButtonTextActive]}>
-                {PRICING.annualYen}円 / 年
-              </Text>
-              <Text style={styles.planBadge}>{`約${ANNUAL_SAVINGS_PERCENT}%お得`}</Text>
-            </TouchableOpacity>
+            </View>
           </View>
+          <Text style={styles.loyaltyNote}>
+            {`12ヶ月連続でご利用いただくと、13ヶ月目のご利用料金が無料になります。`}
+          </Text>
           <Text style={styles.trialNote}>
             {`ご登録から${PRICING.trialDays}日間は無料でお試しいただけます。お試し期間終了後、上記プランで自動的に決済されます。`}
           </Text>
@@ -96,7 +75,7 @@ export default function PricingScreen() {
           <Text style={styles.cardTitle}>お申し込み内容のご確認</Text>
           <View style={styles.confirmRow}>
             <Text style={styles.confirmLabel}>プラン</Text>
-            <Text style={styles.confirmValue}>{plan === 'monthly' ? '月額プラン' : '年額プラン'}</Text>
+            <Text style={styles.confirmValue}>月額プラン</Text>
           </View>
           <View style={styles.confirmRow}>
             <Text style={styles.confirmLabel}>初回お支払日（無料お試し終了日）</Text>
@@ -104,11 +83,13 @@ export default function PricingScreen() {
           </View>
           <View style={styles.confirmRow}>
             <Text style={styles.confirmLabel}>お支払い金額</Text>
-            <Text style={styles.confirmValue}>{`${price}円（税込）`}</Text>
+            <Text style={styles.confirmValue}>{`${PRICING.monthlyYen}円（税込）`}</Text>
           </View>
           <View style={styles.confirmRow}>
             <Text style={styles.confirmLabel}>更新サイクル</Text>
-            <Text style={styles.confirmValue}>{`以降、${cadenceLabel}自動更新・決済されます`}</Text>
+            <Text style={styles.confirmValue}>
+              以降、毎月自動更新・決済されます（12ヶ月連続でご利用いただくと、13ヶ月目は無料になります）
+            </Text>
           </View>
           <View style={styles.confirmRow}>
             <Text style={styles.confirmLabel}>解約方法</Text>
@@ -271,11 +252,11 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: COLORS.text,
   },
-  planBadge: {
-    fontSize: 10,
+  loyaltyNote: {
+    fontSize: 12.5,
+    color: COLORS.primaryDark,
     fontWeight: '700',
-    color: '#FFFFFF',
-    marginTop: 2,
+    lineHeight: 18,
   },
   trialNote: {
     fontSize: 12,
