@@ -13,12 +13,28 @@ export type FoodItem = {
   carbs: number;
 };
 
+/**
+ * One of the dishes the model thinks the photo might be. The API returns several
+ * when two dishes look alike in a photo but differ a lot in calories — 穴子丼 vs
+ * うなぎ丼 differ by roughly 300kcal, and after grilling they look nearly identical.
+ */
+export type DishCandidate = {
+  name: string;
+  confidence: number; // 0.0 - 1.0
+  totalCalories: number;
+  reason: string;
+};
+
 export type AnalysisResult = {
   dishName: string;
   items: FoodItem[];
   totalCalories: number;
   nutrients: NutrientTotals;
   confidenceNote: string;
+  // Optional so meals saved before this shipped still satisfy the type.
+  dishCandidates?: DishCandidate[];
+  needsConfirmation?: boolean;
+  confirmQuestion?: string;
 };
 
 export type MealEntry = AnalysisResult & {

@@ -39,7 +39,45 @@ function resolveLang(value: unknown): string {
 const ANALYSIS_SCHEMA = {
   type: 'object',
   properties: {
-    dishName: { type: 'string', description: 'Name of the dish shown in the photo' },
+    dishName: {
+      type: 'string',
+      description: 'Name of the dish shown in the photo. Must equal dishCandidates[0].name.',
+    },
+    dishCandidates: {
+      type: 'array',
+      description:
+        'Ranked candidates, highest confidence first. Always at least one. Return two or ' +
+        'more whenever a lookalike dish is plausible — never assert a single answer in that case.',
+      items: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', description: 'Dish name' },
+          confidence: { type: 'number', description: '0.0 to 1.0' },
+          totalCalories: {
+            type: 'integer',
+            description: 'Total kcal if THIS candidate is the correct one',
+          },
+          reason: {
+            type: 'string',
+            description: 'The visual evidence supporting this candidate',
+          },
+        },
+        required: ['name', 'confidence', 'totalCalories', 'reason'],
+        additionalProperties: false,
+      },
+    },
+    needsConfirmation: {
+      type: 'boolean',
+      description:
+        'True when the top candidate is not clearly separated from the next one, or when ' +
+        'lighting/white balance makes the photo unreliable.',
+    },
+    confirmQuestion: {
+      type: 'string',
+      description:
+        'One short question that would settle the ambiguity, e.g. "うなぎと穴子、どちらでしたか？". ' +
+        'Empty string when needsConfirmation is false.',
+    },
     items: {
       type: 'array',
       items: {
@@ -72,20 +110,73 @@ const ANALYSIS_SCHEMA = {
       description: 'A short 1-2 sentence note on the limits of this estimate',
     },
   },
-  required: ['dishName', 'items', 'totalCalories', 'nutrients', 'confidenceNote'],
+  required: [
+    'dishName',
+    'dishCandidates',
+    'needsConfirmation',
+    'confirmQuestion',
+    'items',
+    'totalCalories',
+    'nutrients',
+    'confidenceNote',
+  ],
   additionalProperties: false,
 } as const;
+
+// Dishes that look alike in a photo but differ a lot in calories. When one of a pair
+// is a candidate, the model must offer both instead of guessing. Extend this list as
+// real misidentifications come in from the /correction endpoint.
+const LOOKALIKE_RULES = `
+Some dishes look nearly identical in a photo but differ greatly in calories.
+When any dish below is plausible, you MUST return every plausible member in
+dishCandidates and set needsConfirmation to true. Do NOT assert a single answer.
+
+- うなぎ蒲焼 / 穴子      (unagi ~880kcal per donburi vs anago ~555kcal)
+- 豚汁 / けんちん汁
+- 牛丼 / 豚丼
+- 天丼 / かき揚げ丼
+- 味噌カツ / とんかつ
+- ざるそば / もりそば
+
+Distinguishing うなぎ from 穴子 once glazed with tare:
+NEVER judge tare darkness in absolute terms. Restaurant lighting and phone HDR
+shift it heavily, and that is the single most common cause of a wrong answer here.
+Judge it RELATIVE to the white rice visible in the same bowl.
+- うなぎ : tare much darker than the rice; thick and lacquered; strong specular
+           highlights from the fat; flesh colour does not show through.
+- 穴子   : tare lighter — closer to a translucent amber; the pale flesh partly
+           shows through the glaze; Edo-style nimi-anago is lighter still.
+Also weigh signals that lighting cannot distort:
+- Fillet thickness and width (うなぎ thick and wide / 穴子 thin and narrow)
+- Ratio of fish area to the rice below it
+
+If the whites in the photo do not look neutral — warm tungsten cast, heavy
+shadow, blown highlights — LOWER your confidence and set needsConfirmation to true.
+It is far better to ask one question than to silently log the wrong calories.
+`;
 
 function buildAnalysisPrompt(lang: string): string {
   const languageName = LANGUAGE_NAMES[lang] ?? LANGUAGE_NAMES.ko;
   return `IMPORTANT: Every string value in your JSON response — dish name, item names, portions, confidence note — must be written in ${languageName}. This applies no matter what language the dish's usual name comes from, or what language any text/label visible in the photo is in. Do not use English unless ${languageName} is English.
 
 Analyze the food shown in this photo.
-1. Identify the name of the dish, written in ${languageName}.
+1. Identify the dish. Put your ranked guesses in dishCandidates (highest confidence first),
+   and set dishName to the top candidate's name. Both written in ${languageName}.
 2. List each visible ingredient or component item (its name written in ${languageName}), estimating its portion, calories (kcal), protein (g), fat (g), and carbohydrates (g).
-3. Calculate the total calories and the total protein/fat/carbohydrates.
+3. Calculate the total calories and the total protein/fat/carbohydrates. These must match the TOP candidate.
 4. Briefly note, in ${languageName}, that this estimate may vary depending on the actual recipe, ingredients, and portion size.
-If the photo shows multiple dishes, include all of them. Reminder: respond entirely in ${languageName}.`;
+If the photo shows multiple dishes, include all of them. Reminder: respond entirely in ${languageName}.
+${LOOKALIKE_RULES}
+Write confirmQuestion in ${languageName} as well. Leave it as an empty string when
+needsConfirmation is false. Set needsConfirmation to true whenever the top two
+candidates are within about 0.3 confidence of each other.
+
+confirmQuestion must be ONE short question that the user answers by picking one of
+the dishCandidates — the app shows it above a list of those names as tappable choices.
+Never ask two things at once, and never ask for a measurement or a description the
+user would have to type.
+Good: "うなぎと穴子、どちらでしたか？"
+Bad : "うなぎでしょうか穴子でしょうか？また厚みはどのくらいですか？"`;
 }
 
 const COACH_SCHEMA = {
@@ -171,6 +262,11 @@ export default {
       return handleMe(request, env, corsHeaders);
     }
 
+    // Recording a user's correction doesn't call Claude, so it skips the AI budget too.
+    if (url.pathname === '/correction' && request.method === 'POST') {
+      return handleCorrection(request, env, corsHeaders);
+    }
+
     if (request.method !== 'POST' || (url.pathname !== '/analyze' && url.pathname !== '/coach')) {
       return jsonResponse({ error: 'not_found' }, 404, corsHeaders);
     }
@@ -240,6 +336,66 @@ async function handleAnalyze(
     console.error('analysis_failed', err);
     return jsonResponse({ error: 'analysis_failed' }, 502, corsHeaders);
   }
+}
+
+// When the user overrides the dish the model picked, store it. This is the only way
+// real misidentifications ever reach us — the photo itself is never kept, just the
+// names and the confidence the model had. Query it later to extend LOOKALIKE_RULES:
+//   npx wrangler d1 execute food-calorie-scanner-db --remote \
+//     --command "SELECT predicted, corrected, COUNT(*) c FROM dish_corrections \
+//                GROUP BY predicted, corrected ORDER BY c DESC"
+async function handleCorrection(
+  request: Request,
+  env: Env,
+  corsHeaders: Record<string, string>
+): Promise<Response> {
+  let body: {
+    predicted?: unknown;
+    corrected?: unknown;
+    confidence?: unknown;
+    wasOffered?: unknown;
+    lang?: unknown;
+  };
+  try {
+    body = await request.json();
+  } catch {
+    return jsonResponse({ error: 'invalid_json' }, 400, corsHeaders);
+  }
+
+  const predicted = typeof body.predicted === 'string' ? body.predicted.slice(0, 120) : '';
+  const corrected = typeof body.corrected === 'string' ? body.corrected.slice(0, 120) : '';
+  if (!predicted || !corrected || predicted === corrected) {
+    return jsonResponse({ error: 'invalid_correction' }, 400, corsHeaders);
+  }
+
+  const confidence = typeof body.confidence === 'number' ? body.confidence : null;
+  // Whether the corrected dish was already in dishCandidates. If this is usually false,
+  // the lookalike list is missing a pair. If it's usually true, the ranking is the problem.
+  const wasOffered = body.wasOffered === true ? 1 : 0;
+
+  try {
+    await env.USERS_DB.prepare(
+      `INSERT INTO dish_corrections
+         (predicted, corrected, confidence, was_offered, lang, model, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
+    )
+      .bind(
+        predicted,
+        corrected,
+        confidence,
+        wasOffered,
+        resolveLang(body.lang),
+        MODEL,
+        new Date().toISOString()
+      )
+      .run();
+  } catch (err) {
+    // A failed correction log must never break the user's meal entry.
+    console.error('correction_log_failed', err);
+    return jsonResponse({ ok: false }, 200, corsHeaders);
+  }
+
+  return jsonResponse({ ok: true }, 200, corsHeaders);
 }
 
 type CoachRequestBody = {
@@ -351,7 +507,9 @@ async function callClaudeJson(schema: object, apiKey: string, content: ClaudeCon
     },
     body: JSON.stringify({
       model: MODEL,
-      max_tokens: 1024,
+      // Raised from 1024 when dishCandidates was added — the candidate list plus its
+      // reasons pushes the JSON past the old cap, and a truncated body fails JSON.parse.
+      max_tokens: 2048,
       output_config: { format: { type: 'json_schema', schema } },
       messages: [{ role: 'user', content }],
     }),

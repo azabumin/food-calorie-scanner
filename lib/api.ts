@@ -37,6 +37,29 @@ export async function analyzeFoodPhoto(
   return data;
 }
 
+/**
+ * Tell the backend the user picked a different dish than the model ranked first.
+ * Fire-and-forget: a failure here must never block logging the meal, so this
+ * swallows errors instead of throwing.
+ */
+export async function sendCorrection(req: {
+  predicted: string;
+  corrected: string;
+  confidence?: number;
+  wasOffered: boolean;
+  lang: Lang;
+}): Promise<void> {
+  try {
+    await fetch(`${WORKER_URL}/correction`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req),
+    });
+  } catch {
+    // Intentionally ignored — this is telemetry, not part of the user's flow.
+  }
+}
+
 export type CoachRequest = {
   goalCalories: number;
   consumedCalories: number;

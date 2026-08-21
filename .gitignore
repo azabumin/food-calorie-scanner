@@ -48,3 +48,10 @@ worker/worker-configuration.d.ts
 # generated native folders
 /ios
 /android
+
+# Local research and business material — not part of the app, and some of it
+# (quotes, competitor captures) must not end up in a public repository.
+/acquisition-strategy-*.pdf
+/report_*.pdf
+/타사제품비교분석/
+/타사제품이미지/

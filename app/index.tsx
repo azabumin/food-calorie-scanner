@@ -23,7 +23,7 @@ import SummaryCard from '../components/SummaryCard';
 import TrendCard from '../components/TrendCard';
 import TrialBanner from '../components/TrialBanner';
 import { COLORS, RADIUS, SPACING } from '../constants/theme';
-import { AnalyzeError, analyzeFoodPhoto, getCoachAdvice } from '../lib/api';
+import { AnalyzeError, analyzeFoodPhoto, getCoachAdvice, sendCorrection } from '../lib/api';
 import { clearAuthToken, fetchMe, loadAuthToken } from '../lib/auth';
 import type { AuthUser } from '../lib/auth';
 import { detectDefaultLang, STRINGS } from '../lib/i18n';
@@ -72,6 +72,9 @@ export default function HomeScreen() {
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
+  // Which entry of result.dishCandidates the user is logging. 0 is the model's own
+  // top pick; anything else means the user overrode it.
+  const [pickedCandidate, setPickedCandidate] = useState(0);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const [coachAdvice, setCoachAdvice] = useState<CoachAdvice | null>(null);
@@ -190,8 +193,42 @@ export default function HomeScreen() {
     setCoachError(null);
     setErrorMsg(null);
     setResult(null);
+    setPickedCandidate(0);
     setPremiumModal(null);
   }, [lang]);
+
+  // What actually gets logged. When the user picks a candidate other than the model's
+  // top one, swap in that candidate's name and calories. The per-item breakdown the
+  // API returned describes the TOP candidate, so scale the macros by the calorie
+  // ratio rather than leaving the wrong dish's numbers in place — a rough correction,
+  // but far closer than 880kcal of unagi standing in for 580kcal of anago.
+  const loggedResult = useMemo<AnalysisResult>(() => {
+    if (!result) {
+      return { dishName: '', items: [], totalCalories: 0, nutrients: { protein: 0, fat: 0, carbs: 0 }, confidenceNote: '' };
+    }
+    const picked = result.dishCandidates?.[pickedCandidate];
+    if (!picked || pickedCandidate === 0 || result.totalCalories <= 0) return result;
+
+    const ratio = picked.totalCalories / result.totalCalories;
+    const round1 = (n: number) => Math.round(n * 10) / 10;
+    return {
+      ...result,
+      dishName: picked.name,
+      totalCalories: picked.totalCalories,
+      items: result.items.map((it) => ({
+        ...it,
+        calories: Math.round(it.calories * ratio),
+        protein: round1(it.protein * ratio),
+        fat: round1(it.fat * ratio),
+        carbs: round1(it.carbs * ratio),
+      })),
+      nutrients: {
+        protein: round1(result.nutrients.protein * ratio),
+        fat: round1(result.nutrients.fat * ratio),
+        carbs: round1(result.nutrients.carbs * ratio),
+      },
+    };
+  }, [result, pickedCandidate]);
 
   const consumed = useMemo(() => meals.reduce((sum, m) => sum + m.totalCalories, 0), [meals]);
   const nutrientTotals = useMemo(
@@ -218,6 +255,7 @@ export default function HomeScreen() {
     setAnalyzing(true);
     setErrorMsg(null);
     setResult(null);
+    setPickedCandidate(0);
     try {
       const manipulated = await ImageManipulator.manipulateAsync(
         uri,
@@ -271,6 +309,7 @@ export default function HomeScreen() {
       const uri = pickerResult.assets[0].uri;
       setImageUri(uri);
       setResult(null);
+    setPickedCandidate(0);
       await analyze(uri);
     } catch {
       setErrorMsg(t.errors.pickGeneric);
@@ -280,17 +319,32 @@ export default function HomeScreen() {
   function cancelPick() {
     setImageUri(null);
     setResult(null);
+    setPickedCandidate(0);
     setErrorMsg(null);
   }
 
   function confirmAddMeal() {
     if (!result) return;
     const entry: MealEntry = {
-      ...result,
+      ...loggedResult,
       id: `${Date.now()}`,
       time: new Date().toISOString(),
     };
     setMeals((prev) => [...prev, entry]);
+
+    // The user overrode the model's top pick — tell the backend so we can find out
+    // which lookalike pairs it actually gets wrong. Fire-and-forget.
+    const candidates = result.dishCandidates;
+    if (pickedCandidate > 0 && candidates && candidates[pickedCandidate]) {
+      sendCorrection({
+        predicted: candidates[0].name,
+        corrected: candidates[pickedCandidate].name,
+        confidence: candidates[0].confidence,
+        wasOffered: true,
+        lang,
+      });
+    }
+
     cancelPick();
   }
 
@@ -470,9 +524,53 @@ export default function HomeScreen() {
 
               {!analyzing && !errorMsg && result && (
                 <View style={styles.analysisBlock}>
-                  <Text style={styles.dishName}>{result.dishName}</Text>
+                  <Text style={styles.dishName}>{loggedResult.dishName}</Text>
 
-                  {result.items.map((item, index) => (
+                  {/* Two dishes can look alike in a photo but differ by hundreds of
+                      kcal. When the model says it can't tell, ask before logging —
+                      one tap is cheaper than a silently wrong day. */}
+                  {result.needsConfirmation &&
+                    result.dishCandidates &&
+                    result.dishCandidates.length > 1 && (
+                      <View style={styles.confirmBox}>
+                        <Text style={styles.confirmQuestion}>{result.confirmQuestion}</Text>
+                        {result.dishCandidates.map((candidate, index) => {
+                          const selected = index === pickedCandidate;
+                          return (
+                            <TouchableOpacity
+                              key={`${candidate.name}-${index}`}
+                              style={[styles.candidateRow, selected && styles.candidateRowActive]}
+                              onPress={() => setPickedCandidate(index)}
+                              accessibilityRole="radio"
+                              accessibilityState={{ selected }}
+                            >
+                              <View
+                                style={[styles.candidateDot, selected && styles.candidateDotActive]}
+                              />
+                              <Text
+                                style={[
+                                  styles.candidateName,
+                                  selected && styles.candidateNameActive,
+                                ]}
+                                numberOfLines={1}
+                              >
+                                {candidate.name}
+                              </Text>
+                              <Text
+                                style={[
+                                  styles.candidateCalories,
+                                  selected && styles.candidateCaloriesActive,
+                                ]}
+                              >
+                                {candidate.totalCalories} kcal
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    )}
+
+                  {loggedResult.items.map((item, index) => (
                     <View
                       key={`${item.name}-${index}`}
                       style={[styles.itemRow, index === 0 && styles.itemRowFirst]}
@@ -487,14 +585,14 @@ export default function HomeScreen() {
 
                   <View style={styles.totalRow}>
                     <Text style={styles.totalLabel}>{t.result.totalCalories}</Text>
-                    <Text style={styles.totalValue}>{result.totalCalories} kcal</Text>
+                    <Text style={styles.totalValue}>{loggedResult.totalCalories} kcal</Text>
                   </View>
 
                   <Text style={styles.macroLine}>
                     {t.result.macroLine(
-                      Math.round(result.nutrients.protein),
-                      Math.round(result.nutrients.fat),
-                      Math.round(result.nutrients.carbs)
+                      Math.round(loggedResult.nutrients.protein),
+                      Math.round(loggedResult.nutrients.fat),
+                      Math.round(loggedResult.nutrients.carbs)
                     )}
                   </Text>
 
@@ -737,6 +835,66 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: COLORS.text,
     marginBottom: SPACING.sm,
+  },
+  confirmBox: {
+    backgroundColor: COLORS.chipBg,
+    borderRadius: RADIUS.md,
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
+  },
+  confirmQuestion: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: SPACING.sm,
+    lineHeight: 20,
+  },
+  candidateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    borderRadius: RADIUS.sm,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.card,
+    marginTop: SPACING.xs,
+    // Keep the row comfortably tappable — this is the one control that decides
+    // whether the day's calories are right.
+    minHeight: 48,
+  },
+  candidateRowActive: {
+    borderColor: COLORS.primary,
+    borderWidth: 2,
+  },
+  candidateDot: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: COLORS.border,
+  },
+  candidateDotActive: {
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primary,
+  },
+  candidateName: {
+    flex: 1,
+    fontSize: 15,
+    color: COLORS.text,
+  },
+  candidateNameActive: {
+    fontWeight: '700',
+  },
+  candidateCalories: {
+    fontSize: 14,
+    color: COLORS.textMuted,
+    fontVariant: ['tabular-nums'],
+  },
+  candidateCaloriesActive: {
+    color: COLORS.primary,
+    fontWeight: '700',
   },
   itemRow: {
     flexDirection: 'row',
