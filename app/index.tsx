@@ -201,7 +201,10 @@ export default function HomeScreen() {
   // top one, swap in that candidate's name and calories. The per-item breakdown the
   // API returned describes the TOP candidate, so scale the macros by the calorie
   // ratio rather than leaving the wrong dish's numbers in place — a rough correction,
-  // but far closer than 880kcal of unagi standing in for 580kcal of anago.
+  // but far closer than 880kcal of unagi standing in for 580kcal of anago. The one item
+  // flagged matchesDishCandidate is the dish's own identity (e.g. the eel fillet) and
+  // gets renamed to the picked candidate too, so the breakdown doesn't keep showing
+  // "unagi" as a line item under an "anago" total.
   const loggedResult = useMemo<AnalysisResult>(() => {
     if (!result) {
       return { dishName: '', items: [], totalCalories: 0, nutrients: { protein: 0, fat: 0, carbs: 0 }, confidenceNote: '' };
@@ -217,6 +220,7 @@ export default function HomeScreen() {
       totalCalories: picked.totalCalories,
       items: result.items.map((it) => ({
         ...it,
+        name: it.matchesDishCandidate ? picked.name : it.name,
         calories: Math.round(it.calories * ratio),
         protein: round1(it.protein * ratio),
         fat: round1(it.fat * ratio),

@@ -89,8 +89,18 @@ const ANALYSIS_SCHEMA = {
           protein: { type: 'number', description: 'Estimated protein for this item (g)' },
           fat: { type: 'number', description: 'Estimated fat for this item (g)' },
           carbs: { type: 'number', description: 'Estimated carbohydrates for this item (g)' },
+          matchesDishCandidate: {
+            type: 'boolean',
+            description:
+              'True for exactly one item: the one whose identity IS the dish itself (e.g. the ' +
+              'eel fillet in an unagi/anago donburi) and would need a different name if a ' +
+              'different dishCandidates entry turned out to be correct instead of the top one. ' +
+              'False for every other item (rice, soup, pickles, garnish, sides) that stays the ' +
+              'same regardless of which candidate is correct. Exactly one true whenever ' +
+              'dishCandidates has more than one entry.',
+          },
         },
-        required: ['name', 'estimatedPortion', 'calories', 'protein', 'fat', 'carbs'],
+        required: ['name', 'estimatedPortion', 'calories', 'protein', 'fat', 'carbs', 'matchesDishCandidate'],
         additionalProperties: false,
       },
     },
@@ -162,10 +172,23 @@ function buildAnalysisPrompt(lang: string): string {
 Analyze the food shown in this photo.
 1. Identify the dish. Put your ranked guesses in dishCandidates (highest confidence first),
    and set dishName to the top candidate's name. Both written in ${languageName}.
-2. List each visible ingredient or component item (its name written in ${languageName}), estimating its portion, calories (kcal), protein (g), fat (g), and carbohydrates (g).
+2. List each ingredient or component item you can actually SEE in the photo, its name written
+   in ${languageName}, estimating its portion, calories (kcal), protein (g), fat (g), and
+   carbohydrates (g). Set matchesDishCandidate to true for the single item that IS the dish's
+   identity (the one whose name would need to change if a different dishCandidates entry were
+   correct instead) — false for every other item, since rice/soup/pickles/sides stay the same
+   regardless of which candidate is right.
 3. Calculate the total calories and the total protein/fat/carbohydrates. These must match the TOP candidate.
 4. Briefly note, in ${languageName}, that this estimate may vary depending on the actual recipe, ingredients, and portion size.
 If the photo shows multiple dishes, include all of them. Reminder: respond entirely in ${languageName}.
+
+CRITICAL — DO NOT INVENT ITEMS THAT AREN'T IN THE PHOTO: List only what is visibly present.
+Never add a dish, protein, or side just because a restaurant's typical teishoku/combo/set-meal
+template usually includes it, and never assume the photographed dish is part of a larger set
+you can't see. If the photo shows one bowl of noodles, the item list is only what's in that
+bowl — not an inferred rice bowl, second protein, or other course that isn't in the frame.
+When in doubt about whether something is really there, leave it out rather than guess from a
+familiar-looking meal pattern.
 ${LOOKALIKE_RULES}
 Write confirmQuestion in ${languageName} as well. Leave it as an empty string when
 needsConfirmation is false. Set needsConfirmation to true whenever the top two

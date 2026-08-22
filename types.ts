@@ -11,6 +11,9 @@ export type FoodItem = {
   protein: number;
   fat: number;
   carbs: number;
+  // True for the one item whose identity IS the dish (its name changes if the user picks a
+  // different dishCandidate). Optional so meals saved before this shipped still satisfy the type.
+  matchesDishCandidate?: boolean;
 };
 
 /**
