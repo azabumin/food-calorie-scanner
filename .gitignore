@@ -63,3 +63,6 @@ worker/worker-configuration.d.ts
 /*御見積*.pdf
 /S__*.jpg
 /タイトルなし*.jpg
+
+# Business research about third parties (Lisa Works) -- not part of the app, not for a public repo.
+/docs/lisaworks-research-*.pdf
