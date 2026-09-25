@@ -19,6 +19,7 @@ export default function RootLayout() {
           <Stack.Screen name="index" />
           <Stack.Screen name="account" />
           <Stack.Screen name="pricing" />
+          <Stack.Screen name="mypage" />
           <Stack.Screen name="legal" />
           <Stack.Screen name="terms" />
           <Stack.Screen name="privacy" />

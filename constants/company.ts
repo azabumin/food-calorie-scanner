@@ -1,5 +1,5 @@
 export const COMPANY = {
-  name: '株式会社PRIAMOS',
+  name: '株式会社Ｐｒｉａｍｏｓ',
   representative: '閔鐘基',
   address: '東京都江戸川区西葛西8-15 新田住宅6-703',
   email: 'azabumin@gmail.com',

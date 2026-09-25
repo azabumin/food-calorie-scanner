@@ -7,6 +7,12 @@ function jsonResponse(data: unknown, status: number, corsHeaders: Record<string,
 
 const PBKDF2_ITERATIONS = 100_000;
 const TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+// The site owner's own account stays signed in for a year, so it never silently drops back to a
+// guest (trial / free tier) between visits.
+const ADMIN_TOKEN_TTL_MS = 365 * 24 * 60 * 60 * 1000;
+// /auth/me hands out a fresh token once the current one has less than this left, so anyone who
+// opens the app at least once a month stays signed in instead of losing their plan every 30 days.
+const TOKEN_REFRESH_WINDOW_MS = 15 * 24 * 60 * 60 * 1000;
 const AUTH_DAILY_ATTEMPT_LIMIT = 20;
 
 function bufToHex(buf: ArrayBuffer | Uint8Array): string {
@@ -99,7 +105,52 @@ function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-type UserRow = { id: string; email: string; password_hash: string; is_premium: number; created_at: string };
+type UserRow = {
+  id: string;
+  email: string;
+  password_hash: string;
+  is_premium: number;
+  created_at: string;
+  premium_expires_at: string | null;
+  card_registered: number;
+  next_charge_due_at: string | null;
+  // Set when the customer stops the next renewal from My Page; premium lasts until the paid period ends.
+  canceled_at: string | null;
+};
+
+// The site owner's own account (used to demo the app / verify it works) should never be
+// blocked by trial expiry or the ZEUS payment gate. This overrides the *response*, not the
+// DB row -- nothing here looks like a real ZEUS-billed subscription, it just always
+// resolves as premium for this one email.
+const ADMIN_EMAILS = new Set(['azabumin@gmail.com']);
+
+function tokenTtlMs(email: string): number {
+  return ADMIN_EMAILS.has(email.toLowerCase()) ? ADMIN_TOKEN_TTL_MS : TOKEN_TTL_MS;
+}
+
+// is_premium alone never goes back to 0 on its own -- ZEUS's continuous-reservation renewal
+// is a manual monthly process (see payments.ts / docs/billing-cycle.md), so a missed or failed
+// renewal has to expire access itself rather than leaving it premium forever. premium_expires_at
+// is set (and pushed out another cycle) by the webhook every time a real charge succeeds.
+export function resolveIsPremium(email: string, isPremiumDb: boolean, premiumExpiresAt: string | null): boolean {
+  if (ADMIN_EMAILS.has(email.toLowerCase())) return true;
+  if (!isPremiumDb) return false;
+  if (!premiumExpiresAt) return true; // legacy/edge case: paid but no expiry recorded yet
+  return new Date(premiumExpiresAt).getTime() > Date.now();
+}
+
+// The subscription fields every auth response carries, so My Page can render without a second call.
+function subscriptionFields(
+  user: Pick<UserRow, 'email' | 'is_premium' | 'premium_expires_at' | 'card_registered' | 'next_charge_due_at' | 'canceled_at'>
+) {
+  return {
+    isPremium: resolveIsPremium(user.email, !!user.is_premium, user.premium_expires_at),
+    cardRegistered: !!user.card_registered,
+    cancelAtPeriodEnd: !!user.canceled_at,
+    nextChargeDueAt: user.next_charge_due_at ?? null,
+    premiumExpiresAt: user.premium_expires_at ?? null,
+  };
+}
 
 // Separate KV namespace/prefix from the AI-cost rate limiter — this one guards
 // against credential-stuffing/brute-force on the auth endpoints specifically.
@@ -150,8 +201,24 @@ export async function handleRegister(
     .bind(id, email, passwordHash, createdAt)
     .run();
 
-  const token = await signToken({ userId: id, exp: Date.now() + TOKEN_TTL_MS }, env.AUTH_SECRET);
-  return jsonResponse({ token, email, createdAt, isPremium: false }, 200, corsHeaders);
+  const token = await signToken({ userId: id, exp: Date.now() + tokenTtlMs(email) }, env.AUTH_SECRET);
+  return jsonResponse(
+    {
+      token,
+      email,
+      createdAt,
+      ...subscriptionFields({
+        email,
+        is_premium: 0,
+        premium_expires_at: null,
+        card_registered: 0,
+        next_charge_due_at: null,
+        canceled_at: null,
+      }),
+    },
+    200,
+    corsHeaders
+  );
 }
 
 export async function handleLogin(
@@ -178,7 +245,7 @@ export async function handleLogin(
   }
 
   const user = await env.USERS_DB.prepare(
-    'SELECT id, email, password_hash, is_premium, created_at FROM users WHERE email = ?'
+    'SELECT id, email, password_hash, is_premium, created_at, premium_expires_at, card_registered, next_charge_due_at, canceled_at FROM users WHERE email = ?'
   )
     .bind(email)
     .first<UserRow>();
@@ -186,12 +253,27 @@ export async function handleLogin(
     return jsonResponse({ error: 'invalid_credentials' }, 401, corsHeaders);
   }
 
-  const token = await signToken({ userId: user.id, exp: Date.now() + TOKEN_TTL_MS }, env.AUTH_SECRET);
+  const token = await signToken({ userId: user.id, exp: Date.now() + tokenTtlMs(user.email) }, env.AUTH_SECRET);
   return jsonResponse(
-    { token, email: user.email, createdAt: user.created_at, isPremium: !!user.is_premium },
+    {
+      token,
+      email: user.email,
+      createdAt: user.created_at,
+      ...subscriptionFields(user),
+    },
     200,
     corsHeaders
   );
+}
+
+// Shared by any authenticated route outside auth.ts itself (e.g. payments.ts) --
+// returns the userId from a valid Bearer token, or null if missing/invalid/expired.
+export async function resolveAuthedUserId(request: Request, env: Env): Promise<string | null> {
+  const authHeader = request.headers.get('Authorization') ?? '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+  if (!token) return null;
+  const payload = await verifyToken(token, env.AUTH_SECRET);
+  return payload?.userId ?? null;
 }
 
 export async function handleMe(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
@@ -202,12 +284,33 @@ export async function handleMe(request: Request, env: Env, corsHeaders: Record<s
     return jsonResponse({ error: 'unauthorized' }, 401, corsHeaders);
   }
 
-  const user = await env.USERS_DB.prepare('SELECT email, is_premium, created_at FROM users WHERE id = ?')
+  const user = await env.USERS_DB.prepare(
+    'SELECT email, is_premium, created_at, premium_expires_at, card_registered, next_charge_due_at, canceled_at FROM users WHERE id = ?'
+  )
     .bind(payload.userId)
-    .first<Pick<UserRow, 'email' | 'is_premium' | 'created_at'>>();
+    .first<
+      Pick<
+        UserRow,
+        'email' | 'is_premium' | 'created_at' | 'premium_expires_at' | 'card_registered' | 'next_charge_due_at' | 'canceled_at'
+      >
+    >();
   if (!user) {
     return jsonResponse({ error: 'unauthorized' }, 401, corsHeaders);
   }
 
-  return jsonResponse({ email: user.email, createdAt: user.created_at, isPremium: !!user.is_premium }, 200, corsHeaders);
+  const refreshedToken =
+    payload.exp - Date.now() < TOKEN_REFRESH_WINDOW_MS
+      ? await signToken({ userId: payload.userId, exp: Date.now() + tokenTtlMs(user.email) }, env.AUTH_SECRET)
+      : undefined;
+
+  return jsonResponse(
+    {
+      email: user.email,
+      createdAt: user.created_at,
+      ...subscriptionFields(user),
+      ...(refreshedToken ? { token: refreshedToken } : {}),
+    },
+    200,
+    corsHeaders
+  );
 }

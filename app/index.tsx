@@ -24,7 +24,7 @@ import TrendCard from '../components/TrendCard';
 import TrialBanner from '../components/TrialBanner';
 import { COLORS, RADIUS, SPACING } from '../constants/theme';
 import { AnalyzeError, analyzeFoodPhoto, getCoachAdvice, sendCorrection } from '../lib/api';
-import { clearAuthToken, fetchMe, loadAuthToken } from '../lib/auth';
+import { clearAuthToken, fetchMeResult, loadAuthToken } from '../lib/auth';
 import type { AuthUser } from '../lib/auth';
 import { detectDefaultLang, STRINGS } from '../lib/i18n';
 import { canAnalyze, coachLocked, getTier, trendDaysAllowed, trialDaysRemaining } from '../lib/membership';
@@ -135,12 +135,14 @@ export default function HomeScreen() {
       setAnalyzeCountToday(loadedAnalyzeCount);
 
       if (authToken) {
-        const me = await fetchMe(authToken);
-        if (me) {
-          setAuthUser(me);
-        } else {
+        const me = await fetchMeResult(authToken);
+        if (me.status === 'ok') {
+          setAuthUser(me.user);
+        } else if (me.status === 'invalid') {
           await clearAuthToken();
         }
+        // 'unavailable' (offline, a server hiccup): keep the token so the next launch signs in again --
+        // wiping it here used to log people out for good on a single failed request.
       }
 
       setHydrated(true);
@@ -402,9 +404,14 @@ export default function HomeScreen() {
         </TouchableOpacity>
 
         {authUser ? (
-          <TouchableOpacity style={styles.authLink} onPress={handleLogout}>
-            <Text style={styles.authLinkText} numberOfLines={1}>{`${authUser.email}さん・ログアウト`}</Text>
-          </TouchableOpacity>
+          <View style={styles.authLinks}>
+            <Link href="/mypage" style={styles.authLink}>
+              <Text style={styles.authLinkText}>マイページ</Text>
+            </Link>
+            <TouchableOpacity style={styles.authLink} onPress={handleLogout}>
+              <Text style={styles.authLinkText} numberOfLines={1}>{`${authUser.email}さん・ログアウト`}</Text>
+            </TouchableOpacity>
+          </View>
         ) : (
           <Link href="/account" style={styles.authLink}>
             <Text style={styles.authLinkText}>ログイン</Text>
@@ -674,6 +681,12 @@ const styles = StyleSheet.create({
     color: COLORS.primaryDark,
     fontWeight: '700',
     fontSize: 13,
+  },
+  authLinks: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+    flexShrink: 1,
   },
   authLink: {
     paddingVertical: SPACING.xs,

@@ -1,13 +1,21 @@
-import { handleLogin, handleMe, handleRegister } from './auth';
+import { handleCancelSubscription, handleResumeSubscription } from './account';
+import { handleLogin, handleMe, handleRegister, resolveAuthedUserId } from './auth';
+import { handleCheckoutStart, handleZeusWebhook } from './payments';
 
 // `Env` (RATE_LIMIT_KV, USERS_DB, ALLOWED_ORIGIN) comes from the generated
 // worker-configuration.d.ts (run `npx wrangler types` after changing wrangler.jsonc).
-// ANTHROPIC_API_KEY and AUTH_SECRET are secrets, so they aren't in that
+// ANTHROPIC_API_KEY, AUTH_SECRET and ZEUS_IP_CODE are secrets, so they aren't in that
 // config-derived type — extend it here.
 declare global {
   interface Env {
     ANTHROPIC_API_KEY: string;
     AUTH_SECRET: string;
+    // ZEUS-issued IP code (clientip) for LinkPoint. Not set yet -- ZEUS issues it once the
+    // merchant screening fully completes. Run: wrangler secret put ZEUS_IP_CODE
+    ZEUS_IP_CODE: string;
+    // Optional -- unset until the Resend account + dietdiary.jp domain verification is done.
+    // See email.ts. Until then, payment-failure emails just log instead of sending.
+    RESEND_API_KEY?: string;
   }
 }
 
@@ -16,6 +24,9 @@ const PER_IP_DAILY_LIMIT = 20;
 const GLOBAL_DAILY_LIMIT = 300;
 const MAX_BASE64_LENGTH = 8_000_000; // ~6MB image
 const MODEL = 'claude-haiku-4-5';
+// Photo analysis is the one step where recognition quality is the product, so it gets a stronger
+// vision model than the text-only coach; see JAPANESE_MEAL_GUIDE for the misreads this fixes.
+const ANALYSIS_MODEL = 'claude-sonnet-5';
 const ALLOWED_MEDIA_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 const LANGUAGE_NAMES: Record<string, string> = {
@@ -165,6 +176,31 @@ shadow, blown highlights — LOWER your confidence and set needsConfirmation to 
 It is far better to ask one question than to silently log the wrong calories.
 `;
 
+// Real misidentifications reported from the field (a mixed-grain onigiri read as pork そぼろ,
+// koya-tofu cubes read as potato, one onigiri counted as a full bowl of rice) are what these
+// notes target. They give the model Japanese-home-meal recognition cues, size anchors it can
+// scale against, and a plausibility check -- the same photo used to swing 385-680kcal run to run.
+const JAPANESE_MEAL_GUIDE = `
+JAPANESE HOME-MEAL GUIDANCE (apply whenever it fits what you see):
+- おにぎり (rice ball) is a hand-formed triangle/oval/round of rice, often wrapped in cling film
+  or nori. It is RICE. Mixed-grain rice (雑穀米/五穀米/十六穀米) looks pinkish-purple or brown with
+  dark specks (黒米・赤米・豆). Small pink-orange bits mixed into rice are usually 桜えび, 鮭 flakes or
+  明太子 — NOT meat. Never call a rice ball (or speckled rice) そぼろ, ground meat, or a meat dish
+  unless a distinct meat topping with an obviously meaty texture is clearly visible.
+- Portion anchor: ONE onigiri is about 100-110g of cooked rice (roughly 165-185kcal). Only count
+  "1 bowl (150g)" of rice when the rice is actually sitting in a rice bowl (お茶碗).
+- Pale-yellow, porous/spongy cubes floating in a soup are 高野豆腐 (freeze-dried tofu) or 麩, not
+  potato. Potato is opaque with smooth cut faces; 油揚げ is thin brown-edged pieces; 豆腐 is smooth
+  and white. A dozen small cubes of 高野豆腐 or 豆腐 weigh far less than 150g.
+- 味噌汁: the broth plus miso in one bowl (about 150-200ml) is only ~20-45kcal. Add the solid
+  ingredients separately at realistic weights. Do not assume 300ml of broth.
+- Use objects in the frame for scale: chopsticks are about 21-23cm long, a rice bowl or
+  miso-soup bowl is about 11-12cm across, cling film hugs the food it wraps.
+- Sanity-check before you answer: one onigiri plus a bowl of miso soup is a light meal of roughly
+  250-350kcal. If your total is far outside the plausible range for what is actually on the table,
+  re-check both the identification and the portions before answering.
+`;
+
 function buildAnalysisPrompt(lang: string): string {
   const languageName = LANGUAGE_NAMES[lang] ?? LANGUAGE_NAMES.ko;
   return `IMPORTANT: Every string value in your JSON response — dish name, item names, portions, confidence note — must be written in ${languageName}. This applies no matter what language the dish's usual name comes from, or what language any text/label visible in the photo is in. Do not use English unless ${languageName} is English.
@@ -189,6 +225,7 @@ you can't see. If the photo shows one bowl of noodles, the item list is only wha
 bowl — not an inferred rice bowl, second protein, or other course that isn't in the frame.
 When in doubt about whether something is really there, leave it out rather than guess from a
 familiar-looking meal pattern.
+${JAPANESE_MEAL_GUIDE}
 ${LOOKALIKE_RULES}
 Write confirmQuestion in ${languageName} as well. Leave it as an empty string when
 needsConfirmation is false. Set needsConfirmation to true whenever the top two
@@ -290,6 +327,25 @@ export default {
       return handleCorrection(request, env, corsHeaders);
     }
 
+    // Payment routes don't call Claude either, and the webhook has no user auth at all
+    // (ZEUS calls it server-to-server) -- both skip the AI budget below.
+    if (url.pathname === '/payments/checkout' && request.method === 'POST') {
+      const userId = await resolveAuthedUserId(request, env);
+      if (!userId) return jsonResponse({ error: 'unauthorized' }, 401, corsHeaders);
+      return handleCheckoutStart(request, env, corsHeaders, userId);
+    }
+    if (url.pathname === '/payments/webhook' && request.method === 'GET') {
+      return handleZeusWebhook(request, env);
+    }
+
+    if ((url.pathname === '/account/cancel' || url.pathname === '/account/resume') && request.method === 'POST') {
+      const userId = await resolveAuthedUserId(request, env);
+      if (!userId) return jsonResponse({ error: 'unauthorized' }, 401, corsHeaders);
+      return url.pathname === '/account/cancel'
+        ? handleCancelSubscription(env, corsHeaders, userId)
+        : handleResumeSubscription(env, corsHeaders, userId);
+    }
+
     if (request.method !== 'POST' || (url.pathname !== '/analyze' && url.pathname !== '/coach')) {
       return jsonResponse({ error: 'not_found' }, 404, corsHeaders);
     }
@@ -350,10 +406,15 @@ async function handleAnalyze(
   const lang = resolveLang(body.lang);
 
   try {
-    const analysis = await callClaudeJson(ANALYSIS_SCHEMA, env.ANTHROPIC_API_KEY, [
-      { type: 'image', source: { type: 'base64', media_type: mediaType, data: body.image } },
-      { type: 'text', text: buildAnalysisPrompt(lang) },
-    ]);
+    const analysis = await callClaudeJson(
+      ANALYSIS_SCHEMA,
+      env.ANTHROPIC_API_KEY,
+      [
+        { type: 'image', source: { type: 'base64', media_type: mediaType, data: body.image } },
+        { type: 'text', text: buildAnalysisPrompt(lang) },
+      ],
+      ANALYSIS_MODEL
+    );
     return jsonResponse(analysis, 200, corsHeaders);
   } catch (err) {
     console.error('analysis_failed', err);
@@ -408,7 +469,7 @@ async function handleCorrection(
         confidence,
         wasOffered,
         resolveLang(body.lang),
-        MODEL,
+        ANALYSIS_MODEL,
         new Date().toISOString()
       )
       .run();
@@ -520,27 +581,53 @@ type ClaudeContentBlock =
   | { type: 'text'; text: string }
   | { type: 'image'; source: { type: 'base64'; media_type: string; data: string } };
 
-async function callClaudeJson(schema: object, apiKey: string, content: ClaudeContentBlock[]) {
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      // Raised from 1024 when dishCandidates was added — the candidate list plus its
-      // reasons pushes the JSON past the old cap, and a truncated body fails JSON.parse.
-      max_tokens: 2048,
-      output_config: { format: { type: 'json_schema', schema } },
-      messages: [{ role: 'user', content }],
-    }),
-  });
+// A model call that failed in a way another attempt can fix (overloaded/5xx, network blip, a body
+// that came back empty or unparseable) -- as opposed to a request problem that would fail again.
+class RetryableClaudeError extends Error {}
+
+async function callClaudeJson(schema: object, apiKey: string, content: ClaudeContentBlock[], model: string = MODEL) {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      return await requestClaudeJson(schema, apiKey, content, model);
+    } catch (err) {
+      lastError = err;
+      if (!(err instanceof RetryableClaudeError)) throw err;
+    }
+  }
+  throw lastError;
+}
+
+async function requestClaudeJson(schema: object, apiKey: string, content: ClaudeContentBlock[], model: string) {
+  let response: Response;
+  try {
+    response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model,
+        // Raised from 1024 when dishCandidates was added — the candidate list plus its
+        // reasons pushes the JSON past the old cap, and a truncated body fails JSON.parse.
+        max_tokens: 2048,
+        // Sonnet-class models think by default, and that thinking shares max_tokens with the JSON:
+        // it used up the whole budget on ~1 in 3 photos, leaving no (or a truncated) JSON body.
+        thinking: { type: 'disabled' },
+        output_config: { format: { type: 'json_schema', schema } },
+        messages: [{ role: 'user', content }],
+      }),
+    });
+  } catch (err) {
+    throw new RetryableClaudeError(`Claude API unreachable: ${String(err)}`);
+  }
 
   if (!response.ok) {
     const errText = await response.text();
-    throw new Error(`Claude API ${response.status}: ${errText}`);
+    const message = `Claude API ${response.status}: ${errText}`;
+    throw response.status >= 500 || response.status === 429 ? new RetryableClaudeError(message) : new Error(message);
   }
 
   const data = (await response.json()) as {
@@ -554,8 +641,14 @@ async function callClaudeJson(schema: object, apiKey: string, content: ClaudeCon
 
   const textBlock = data.content.find((block) => block.type === 'text');
   if (!textBlock?.text) {
-    throw new Error('no text block in Claude response');
+    console.error('claude_no_text_block', { stopReason: data.stop_reason, blocks: data.content.map((b) => b.type) });
+    throw new RetryableClaudeError('no text block in Claude response');
   }
 
-  return JSON.parse(textBlock.text);
+  try {
+    return JSON.parse(textBlock.text);
+  } catch (err) {
+    console.error('claude_json_parse_failed', { stopReason: data.stop_reason, head: textBlock.text.slice(0, 300) });
+    throw new RetryableClaudeError(`unparseable JSON from Claude: ${String(err)}`);
+  }
 }

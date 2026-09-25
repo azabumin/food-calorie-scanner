@@ -21,6 +21,7 @@ const ERROR_MESSAGES: Record<AuthErrorCode, string> = {
   email_taken: 'このメールアドレスは既に登録されています。ログインをお試しください。',
   invalid_credentials: 'メールアドレスまたはパスワードが正しくありません。',
   rate_limited: '試行回数が上限に達しました。しばらく経ってから再度お試しください。',
+  not_subscribed: 'エラーが発生しました。時間をおいて再度お試しください。',
   network: 'ネットワークに接続できませんでした。通信状況をご確認ください。',
   unknown: 'エラーが発生しました。時間をおいて再度お試しください。',
 };
