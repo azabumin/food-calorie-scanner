@@ -11,7 +11,7 @@ type Props = {
   onClose: () => void;
 };
 
-export default function PremiumComingSoon({ t, title, body, onClose }: Props) {
+export default function PremiumUpgradeModal({ t, title, body, onClose }: Props) {
   function goToPricing() {
     onClose();
     router.push('/pricing');
@@ -23,10 +23,10 @@ export default function PremiumComingSoon({ t, title, body, onClose }: Props) {
       <View style={styles.card}>
         {!!title && <Text style={styles.lockedTitle}>{title}</Text>}
         {!!body && <Text style={styles.lockedBody}>{body}</Text>}
-        <Text style={styles.title}>{t.premium.comingSoonTitle}</Text>
-        <Text style={styles.body}>{t.premium.comingSoonBody}</Text>
+        <Text style={styles.title}>{t.premium.upgradeTitle}</Text>
+        <Text style={styles.body}>{t.premium.upgradeBody}</Text>
         <TouchableOpacity style={styles.primaryButton} onPress={goToPricing}>
-          <Text style={styles.primaryButtonText}>料金プランを見る</Text>
+          <Text style={styles.primaryButtonText}>{t.premium.viewPlansButton}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.closeButton} onPress={onClose}>
           <Text style={styles.closeButtonText}>{t.cancel}</Text>

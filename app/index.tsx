@@ -17,7 +17,7 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import CoachCard from '../components/CoachCard';
 import MealList from '../components/MealList';
 import NutritionBalance from '../components/NutritionBalance';
-import PremiumComingSoon from '../components/PremiumComingSoon';
+import PremiumUpgradeModal from '../components/PremiumUpgradeModal';
 import ProfileSetup from '../components/ProfileSetup';
 import SummaryCard from '../components/SummaryCard';
 import TrendCard from '../components/TrendCard';
@@ -392,6 +392,7 @@ export default function HomeScreen() {
   }
 
   return (
+    <View style={styles.root}>
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.topBar}>
         <TouchableOpacity
@@ -419,37 +420,6 @@ export default function HomeScreen() {
         )}
       </View>
 
-      {pickerOpen && (
-        <View style={styles.modalBackdrop}>
-          <TouchableOpacity
-            style={StyleSheet.absoluteFill}
-            activeOpacity={1}
-            onPress={() => setPickerOpen(false)}
-          />
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>{t.chooseLanguage}</Text>
-            <FlatList
-              data={LANGUAGES}
-              keyExtractor={(item) => item.code}
-              style={styles.modalList}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[styles.langOption, item.code === lang && styles.langOptionActive]}
-                  onPress={() => {
-                    setLang(item.code);
-                    setPickerOpen(false);
-                  }}
-                >
-                  <Text style={[styles.langOptionNative, item.code === lang && styles.langOptionActiveText]}>
-                    {item.native}
-                  </Text>
-                  <Text style={styles.langOptionEnglish}>{item.english}</Text>
-                </TouchableOpacity>
-              )}
-            />
-          </View>
-        </View>
-      )}
 
       {hydrated && (!profile || editingProfile) && (
         <ProfileSetup
@@ -640,15 +610,48 @@ export default function HomeScreen() {
         </>
       )}
 
+    </ScrollView>
+
+      {pickerOpen && (
+        <View style={styles.modalBackdrop}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={() => setPickerOpen(false)}
+          />
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>{t.chooseLanguage}</Text>
+            <FlatList
+              data={LANGUAGES}
+              keyExtractor={(item) => item.code}
+              style={styles.modalList}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[styles.langOption, item.code === lang && styles.langOptionActive]}
+                  onPress={() => {
+                    setLang(item.code);
+                    setPickerOpen(false);
+                  }}
+                >
+                  <Text style={[styles.langOptionNative, item.code === lang && styles.langOptionActiveText]}>
+                    {item.native}
+                  </Text>
+                  <Text style={styles.langOptionEnglish}>{item.english}</Text>
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </View>
+      )}
       {premiumModal && (
-        <PremiumComingSoon
+        <PremiumUpgradeModal
           t={t}
           title={premiumModal.title}
           body={premiumModal.body}
           onClose={() => setPremiumModal(null)}
         />
       )}
-    </ScrollView>
+    </View>
   );
 }
 
@@ -699,6 +702,10 @@ const styles = StyleSheet.create({
     color: COLORS.primaryDark,
     fontWeight: '700',
     fontSize: 13,
+  },
+  root: {
+    flex: 1,
+    backgroundColor: COLORS.bg,
   },
   modalBackdrop: {
     position: 'fixed' as 'absolute',
