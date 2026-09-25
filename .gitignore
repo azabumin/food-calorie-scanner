@@ -55,3 +55,11 @@ worker/worker-configuration.d.ts
 /report_*.pdf
 /타사제품비교분석/
 /타사제품이미지/
+
+# ZEUS documents (connection spec, quotes) are confidential, and phone screenshots are
+# scratch material -- neither belongs in this public repository.
+/\[1\]LinkPoint*.pdf
+/system_creditcard_qc_slb.pdf
+/*御見積*.pdf
+/S__*.jpg
+/タイトルなし*.jpg
