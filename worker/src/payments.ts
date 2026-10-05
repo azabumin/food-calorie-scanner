@@ -1,20 +1,23 @@
-import { resolveIsPremium } from './auth';
+import { isOwnerEmail, resolveIsPremium } from './auth';
 import { sendPaymentFailedEmail } from './email';
+import { stripeRequest, StripeError, verifyStripeSignature } from './stripe';
 
-// ZEUS LinkPoint (リンク（画面遷移）型) integration.
+// Stripe subscriptions for dietdiary.jp (replaces the ZEUS LinkPoint integration, whose contract for
+// this site was cancelled in 2026-10).
 //
 // Flow:
-//   1. On /pricing the customer reviews the plan (price, renewal, cancellation all shown) and we
-//      hand back LinkPoint form params with money=580 via POST /payments/checkout. The customer
-//      pays on ZEUS's hosted page (3-D Secure) and the sale is processed immediately (売上処理方法: 即時).
-//   2. ZEUS calls GET /payments/webhook (registered with ZEUS's sales rep in advance) with the
-//      result. A successful money>0 callback flips is_premium=1 right away.
-//   3. Renewals are NOT automatic on ZEUS's side: each month the operator schedules the charge by
-//      hand under 継続予約登録 in ZEUS's dashboard using the same sendid (see docs/billing-cycle.md),
-//      skipping anyone with canceled_at set and every 13th cycle (loyalty free month). ZEUS calls
-//      the same webhook again for each of those charges.
-//   money=0 callbacks (a card registered without a charge) are still handled for cards registered
-//   before this flow existed; those customers just pay from /pricing like everyone else.
+//   1. POST /payments/checkout (authed) creates a Stripe Checkout Session (mode=subscription) for the
+//      monthly price and returns its hosted-page URL; the browser redirects there and the customer
+//      pays by card (3-D Secure handled by Stripe). Stripe renews the subscription by itself every month.
+//   2. Stripe calls POST /payments/stripe-webhook (signature-verified):
+//        checkout.session.completed      -> remember the Stripe customer/subscription for this user
+//        invoice.paid                    -> premium on until the paid period ends (+ a few days' grace)
+//        invoice.payment_failed          -> payment-failure email
+//        customer.subscription.updated   -> mirror "cancel at period end" into canceled_at
+//        customer.subscription.deleted   -> mark canceled; access simply runs out with the paid period
+//   3. My Page cancel/resume (account.ts) flips cancel_at_period_end on the Stripe subscription.
+//   4. Loyalty: after the 12th paid invoice (cycle 12, 25, ...) a one-time 100% coupon is attached to
+//      the subscription, so the 13th invoice is 0 yen (see applyFreeMonthIfDue).
 
 function jsonResponse(data: unknown, status: number, corsHeaders: Record<string, string>): Response {
   return new Response(JSON.stringify(data), {
@@ -23,22 +26,28 @@ function jsonResponse(data: unknown, status: number, corsHeaders: Record<string,
   });
 }
 
-const ZEUS_ORDER_URL = 'https://linkpt.cardservice.co.jp/cgi-bin/credit/order.cgi';
-// ZEUS's documented CGI-callback source IPs -- checked as a defense-in-depth measure on top
-// of the clientip param match, not the sole guard (see handleZeusWebhook).
-const ZEUS_CALLBACK_IPS = new Set(['210.164.6.67', '202.221.139.50']);
-const TRIAL_DAYS = 7; // keep in sync with lib/membership.ts TRIAL_DAYS
-export const MONTHLY_PRICE_YEN = 580; // keep in sync with PRICING.monthlyYen in constants/company.ts
-const BILLING_CYCLE_DAYS = 30;
-const PREMIUM_GRACE_DAYS = 35;
-const DAY_MS = 86_400_000;
-// Every 13th cycle (1-indexed) is the loyalty free month -- see constants/company.ts's
-// "12ヶ月連続でご利用いただくと、13ヶ月目のご利用料金が無料になります" copy. The monthly
-// "who's due" query (docs/billing-cycle.md) uses this same modulus to decide who to skip.
+// Kill switch for NEW checkouts: set to false (together with PAYMENTS_OPEN in constants/company.ts) to
+// pause them; renewals of existing subscriptions keep running inside Stripe. While the Worker holds a
+// non-live Stripe key only the owner's mailbox can check out (see handleCheckoutStart).
+// PAYMENTS_ENABLED=true is a test-only override (wrangler dev --var) for the local test suite.
+const CHECKOUT_OPEN = true;
 
-function randomSendId(): string {
-  // 20 hex chars, well under LinkPoint's 25-byte sendid limit and unique enough per user.
-  return crypto.randomUUID().replace(/-/g, '').slice(0, 20);
+function checkoutOpen(env: Env): boolean {
+  return CHECKOUT_OPEN || env.PAYMENTS_ENABLED === 'true';
+}
+
+// Access outlives the paid period by a few days so a renewal that Stripe is still retrying (or a
+// webhook that arrives late) doesn't lock a paying customer out for a moment.
+const GRACE_DAYS = 3;
+const DAY_MS = 86_400_000;
+// Every 13th cycle is the loyalty free month: cycles 1-12 are paid, 13 is free, 14-25 are paid, ...
+const LOYALTY_CYCLE = 13;
+
+// Where Stripe sends the customer back to: the calling origin if it is one of ours, else production.
+function returnOrigin(request: Request, env: Env): string {
+  const origin = request.headers.get('Origin') ?? '';
+  const allowed = (env.ALLOWED_ORIGIN ?? '').split(',').map((o) => o.trim());
+  return allowed.includes(origin) ? origin : 'https://dietdiary.jp';
 }
 
 export async function handleCheckoutStart(
@@ -47,26 +56,28 @@ export async function handleCheckoutStart(
   corsHeaders: Record<string, string>,
   userId: string
 ): Promise<Response> {
-  let body: { phone?: unknown; chargeNow?: unknown };
+  if (!checkoutOpen(env)) {
+    return jsonResponse({ error: 'payments_paused' }, 503, corsHeaders);
+  }
+
+  let body: { chargeNow?: unknown };
   try {
     body = await request.json();
   } catch {
     return jsonResponse({ error: 'invalid_json' }, 400, corsHeaders);
   }
-
-  // A stale cached page still shows the old "no charge will be made now" wording and sends no
-  // flag -- refuse rather than charge someone under copy that says the opposite.
+  // The confirmation screen tells the customer they are charged immediately; refuse anything that
+  // didn't come from it (e.g. a stale cached page with different wording).
   if (body.chargeNow !== true) {
     return jsonResponse({ error: 'outdated_client' }, 400, corsHeaders);
   }
-
-  const phone = typeof body.phone === 'string' ? body.phone.trim() : '';
-  if (!/^0\d{9,10}$/.test(phone)) {
-    return jsonResponse({ error: 'invalid_phone' }, 400, corsHeaders);
+  if (!env.STRIPE_SECRET_KEY || !env.STRIPE_PRICE_ID) {
+    console.error('stripe_not_configured');
+    return jsonResponse({ error: 'payments_paused' }, 503, corsHeaders);
   }
 
   const user = await env.USERS_DB.prepare(
-    'SELECT id, email, is_premium, premium_expires_at, payment_sendid FROM users WHERE id = ?'
+    'SELECT id, email, is_premium, premium_expires_at, stripe_customer_id, stripe_subscription_id FROM users WHERE id = ?'
   )
     .bind(userId)
     .first<{
@@ -74,132 +85,239 @@ export async function handleCheckoutStart(
       email: string;
       is_premium: number;
       premium_expires_at: string | null;
-      payment_sendid: string | null;
+      stripe_customer_id: string | null;
+      stripe_subscription_id: string | null;
     }>();
   if (!user) {
     return jsonResponse({ error: 'unauthorized' }, 401, corsHeaders);
   }
 
-  // Never take a payment from someone who is already premium -- that would be a double charge.
+  // Unless the Worker holds a LIVE Stripe key (sk_live_ / rk_live_), only the owner's mailbox (and its
+  // +aliases) may check out: a test card would hand any stranger free premium. Fails safe on odd keys.
+  if (!/^[sr]k_live_/.test(env.STRIPE_SECRET_KEY) && !isOwnerEmail(user.email)) {
+    return jsonResponse({ error: 'payments_paused' }, 503, corsHeaders);
+  }
+
+  // Never take a second subscription from someone who already has premium...
   if (resolveIsPremium(user.email, !!user.is_premium, user.premium_expires_at)) {
     return jsonResponse({ error: 'already_active' }, 409, corsHeaders);
   }
+  // ...or whose Stripe subscription is still alive (e.g. a renewal that is failing and being retried):
+  // that customer should fix their card, not start a second subscription and get billed twice.
+  if (user.stripe_subscription_id) {
+    try {
+      const existing = await stripeRequest(env, 'GET', `/v1/subscriptions/${encodeURIComponent(user.stripe_subscription_id)}`);
+      if (['active', 'trialing', 'past_due', 'unpaid'].includes(existing.status)) {
+        return jsonResponse({ error: 'subscription_exists' }, 409, corsHeaders);
+      }
+    } catch (err) {
+      console.error('stripe_subscription_lookup_failed', err);
+      return jsonResponse({ error: 'payments_unavailable' }, 502, corsHeaders);
+    }
+  }
 
-  const sendid = user.payment_sendid ?? randomSendId();
-  await env.USERS_DB.prepare('UPDATE users SET phone = ?, payment_sendid = ? WHERE id = ?')
-    .bind(phone, sendid, userId)
-    .run();
+  const origin = returnOrigin(request, env);
+  const params: Record<string, string> = {
+    mode: 'subscription',
+    'line_items[0][price]': env.STRIPE_PRICE_ID,
+    'line_items[0][quantity]': '1',
+    success_url: `${origin}/payment-result?status=success`,
+    cancel_url: `${origin}/payment-result?status=failure`,
+    client_reference_id: user.id,
+    'metadata[user_id]': user.id,
+    'subscription_data[metadata][user_id]': user.id,
+    locale: 'ja',
+    'custom_text[submit][message]':
+      'お支払い後、約1か月ごとに自動更新されます（12ヶ月連続でご利用いただくと、13ヶ月目は無料）。解約はマイページからいつでも可能です。',
+  };
+  if (user.stripe_customer_id) params.customer = user.stripe_customer_id;
+  else params.customer_email = user.email;
 
-  const origin = request.headers.get('Origin') ?? 'https://dietdiary.jp';
-  return jsonResponse(
-    {
-      action: ZEUS_ORDER_URL,
-      params: {
-        clientip: env.ZEUS_IP_CODE,
-        money: String(MONTHLY_PRICE_YEN),
-        sendid,
-        telno: phone,
-        email: user.email,
-        success_url: `${origin}/payment-result?status=success`,
-        success_str: 'アプリに戻る',
-        failure_url: `${origin}/payment-result?status=failure`,
-        failure_str: 'アプリに戻る',
-      },
-    },
-    200,
-    corsHeaders
+  try {
+    const session = await stripeRequest(env, 'POST', '/v1/checkout/sessions', params);
+    if (typeof session.url !== 'string') throw new StripeError(0, 'no checkout url in response');
+    return jsonResponse({ url: session.url }, 200, corsHeaders);
+  } catch (err) {
+    console.error('stripe_checkout_failed', err);
+    return jsonResponse({ error: 'payments_unavailable' }, 502, corsHeaders);
+  }
+}
+
+type DbUser = {
+  id: string;
+  email: string;
+  billing_cycle_number: number;
+  canceled_at: string | null;
+  last_processed_ordd: string | null;
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
+};
+
+const USER_COLUMNS =
+  'id, email, billing_cycle_number, canceled_at, last_processed_ordd, stripe_customer_id, stripe_subscription_id';
+
+// Stripe moved some invoice fields between API versions (invoice.subscription vs.
+// invoice.parent.subscription_details.*); read both so the endpoint works whichever version it uses.
+function invoiceSubscriptionId(invoice: any): string | null {
+  return invoice.subscription ?? invoice.parent?.subscription_details?.subscription ?? null;
+}
+
+function invoiceUserId(invoice: any): string | null {
+  return (
+    invoice.subscription_details?.metadata?.user_id ?? invoice.parent?.subscription_details?.metadata?.user_id ?? null
   );
 }
 
-// GET callback ZEUS calls server-to-server after every card registration or charge.
-// Must always answer 200 with body "successok" (a non-200 or wrong body makes ZEUS retry and
-// eventually email us a CGI-error notice) -- so we ack first and only update our own state.
-export async function handleZeusWebhook(request: Request, env: Env): Promise<Response> {
-  const url = new URL(request.url);
-  const result = url.searchParams.get('result');
-  const clientip = url.searchParams.get('clientip');
-  const money = url.searchParams.get('money');
-  const sendid = url.searchParams.get('sendid');
-  // ZEUS-issued unique transaction id. Retried CGI calls for the *same* transaction (their own
-  // docs: auto-retry up to 5x on timeout/disconnect) repeat this same value -- used below so a
-  // retry doesn't get double-counted as a second month of billing.
-  const ordd = url.searchParams.get('ordd');
+async function findUser(env: Env, customerId: string | null, userIdHint: string | null): Promise<DbUser | null> {
+  if (customerId) {
+    const byCustomer = await env.USERS_DB.prepare(`SELECT ${USER_COLUMNS} FROM users WHERE stripe_customer_id = ?`)
+      .bind(customerId)
+      .first<DbUser>();
+    if (byCustomer) return byCustomer;
+  }
+  if (userIdHint) {
+    return env.USERS_DB.prepare(`SELECT ${USER_COLUMNS} FROM users WHERE id = ?`).bind(userIdHint).first<DbUser>();
+  }
+  return null;
+}
 
-  const sourceIp = request.headers.get('CF-Connecting-IP') ?? '';
-  const knownSource = ZEUS_CALLBACK_IPS.has(sourceIp);
-  const knownAccount = !!clientip && clientip === env.ZEUS_IP_CODE;
+// After the 12th paid invoice, attach a one-time 100%-off coupon so the next invoice is free. The
+// coupon is applied BEFORE the database write: if this call fails the event is retried and nothing was
+// recorded; if the write fails afterwards the retry just sets the same discount again.
+async function applyFreeMonthIfDue(env: Env, subscriptionId: string | null, cycle: number): Promise<void> {
+  if (cycle % LOYALTY_CYCLE !== LOYALTY_CYCLE - 1) return;
+  if (!subscriptionId || !env.STRIPE_FREE_MONTH_COUPON_ID) {
+    console.error('free_month_not_applied', { subscriptionId, cycle });
+    return;
+  }
+  await stripeRequest(env, 'POST', `/v1/subscriptions/${encodeURIComponent(subscriptionId)}`, {
+    'discounts[0][coupon]': env.STRIPE_FREE_MONTH_COUPON_ID,
+  });
+}
 
-  if (knownSource && knownAccount && sendid && (result === 'OK' || result === 'NG')) {
-    const current = await env.USERS_DB.prepare(
-      'SELECT email, is_premium, premium_expires_at, billing_cycle_number, next_charge_due_at, canceled_at, last_processed_ordd FROM users WHERE payment_sendid = ?'
-    )
-      .bind(sendid)
-      .first<{
-        email: string;
-        is_premium: number;
-        premium_expires_at: string | null;
-        billing_cycle_number: number;
-        next_charge_due_at: string | null;
-        canceled_at: string | null;
-        last_processed_ordd: string | null;
-      }>();
+async function onCheckoutCompleted(env: Env, session: any): Promise<void> {
+  if (session.mode !== 'subscription') return;
+  const userId: string | null = session.client_reference_id ?? session.metadata?.user_id ?? null;
+  if (!userId || !session.customer) return;
+  await env.USERS_DB.prepare(
+    'UPDATE users SET stripe_customer_id = ?, stripe_subscription_id = ?, card_registered = 1 WHERE id = ?'
+  )
+    .bind(session.customer, session.subscription ?? null, userId)
+    .run();
+}
 
-    const alreadyProcessed = !current || (!!ordd && ordd === current.last_processed_ordd);
+async function onInvoicePaid(env: Env, invoice: any): Promise<boolean> {
+  const subscriptionId = invoiceSubscriptionId(invoice);
+  if (!subscriptionId) return true; // a one-off invoice, not part of a subscription -- nothing to do
 
-    if (alreadyProcessed) {
-      // Unknown sendid, or this exact transaction was already processed (a ZEUS retry) --
-      // ack without touching state again.
-    } else if (result === 'NG') {
-      // A payment or scheduled renewal failed -- let the customer know so they can try again
-      // (or update their card before the grace period runs out).
-      await env.USERS_DB.prepare('UPDATE users SET last_processed_ordd = ? WHERE payment_sendid = ?').bind(ordd, sendid).run();
-      try {
-        await sendPaymentFailedEmail(current.email, env.RESEND_API_KEY);
-      } catch (err) {
-        console.error('payment_failed_email_error', err);
-      }
-    } else if (money === '0') {
-      // Card registration without a charge (only cards registered before the pay-now flow).
-      // Never move the due date of someone who is already paid up.
-      const firstChargeDue = new Date(Date.now() + TRIAL_DAYS * DAY_MS).toISOString();
-      await env.USERS_DB.prepare(
-        'UPDATE users SET card_registered = 1, next_charge_due_at = CASE WHEN is_premium = 1 THEN next_charge_due_at ELSE ? END, last_processed_ordd = ? WHERE payment_sendid = ?'
-      )
-        .bind(firstChargeDue, ordd, sendid)
-        .run();
-    } else {
-      // A real charge succeeded: either the customer's pay-now checkout or a monthly renewal
-      // the operator scheduled by hand. Grant access and set the next due date.
-      const now = new Date();
-      const paidAccessLapsed =
-        !current.is_premium ||
-        !current.premium_expires_at ||
-        new Date(current.premium_expires_at).getTime() <= now.getTime();
-      // An on-time renewal keeps its cadence (due date + 30d); a first or late payment counts
-      // 30 days from today instead of from a due date that is already in the past.
-      const dueBaseline =
-        !paidAccessLapsed && current.next_charge_due_at && new Date(current.next_charge_due_at).getTime() > now.getTime()
-          ? new Date(current.next_charge_due_at)
-          : now;
-      const nextDue = new Date(dueBaseline.getTime() + BILLING_CYCLE_DAYS * DAY_MS).toISOString();
-      // Access lasts a bit past the *next* due date so a manual renewal landing a few days late
-      // doesn't lock the customer out early (mirrors rxhelper's grace period).
-      const premiumExpiresAt = new Date(dueBaseline.getTime() + PREMIUM_GRACE_DAYS * DAY_MS).toISOString();
-      // Paying again after access had lapsed starts a fresh subscription and a fresh "12 months
-      // in a row" streak. A stray charge while a cancellation is still pending (the ZEUS
-      // reservation wasn't deleted) still pays for a month but must not undo the cancellation.
-      const canceledAt = paidAccessLapsed ? null : current.canceled_at;
-      const cycle = paidAccessLapsed ? 1 : current.billing_cycle_number + 1;
-      await env.USERS_DB.prepare(
-        'UPDATE users SET is_premium = 1, premium_expires_at = ?, billing_cycle_number = ?, next_charge_due_at = ?, canceled_at = ?, last_processed_ordd = ? WHERE payment_sendid = ?'
-      )
-        .bind(premiumExpiresAt, cycle, nextDue, canceledAt, ordd, sendid)
-        .run();
-    }
-  } else if (result === 'OK' || result === 'NG') {
-    // Ack it (ZEUS shouldn't retry), but the IP/account check failed -- worth knowing about.
-    console.error('zeus_webhook_untrusted', { sourceIp, clientip, sendid });
+  const user = await findUser(env, invoice.customer ?? null, invoiceUserId(invoice));
+  // Not found yet: checkout.session.completed may still be on its way. Report failure so Stripe retries.
+  if (!user) return false;
+  // Stripe re-sends events (and we may see one twice): each invoice is counted once.
+  if (user.last_processed_ordd === invoice.id) return true;
+
+  const now = Date.now();
+  const periodEndSec: number | undefined = invoice.lines?.data?.[0]?.period?.end;
+  const paidUntil = periodEndSec ? periodEndSec * 1000 : now + 31 * DAY_MS;
+  const expiresAt = new Date(Math.max(paidUntil, now) + GRACE_DAYS * DAY_MS).toISOString();
+  const nextDue = new Date(Math.max(paidUntil, now)).toISOString();
+
+  // A brand-new subscription (first invoice) starts a fresh "12 months in a row" streak and clears
+  // any earlier cancellation; every later invoice continues the streak.
+  const isNewSubscription = invoice.billing_reason === 'subscription_create';
+  const cycle = isNewSubscription ? 1 : user.billing_cycle_number + 1;
+  const canceledAt = isNewSubscription ? null : user.canceled_at;
+
+  await applyFreeMonthIfDue(env, subscriptionId, cycle);
+
+  await env.USERS_DB.prepare(
+    `UPDATE users SET is_premium = 1, premium_expires_at = ?, next_charge_due_at = ?, billing_cycle_number = ?,
+       canceled_at = ?, last_processed_ordd = ?, stripe_customer_id = ?, stripe_subscription_id = ?, card_registered = 1
+     WHERE id = ?`
+  )
+    .bind(expiresAt, nextDue, cycle, canceledAt, invoice.id, invoice.customer ?? user.stripe_customer_id, subscriptionId, user.id)
+    .run();
+  return true;
+}
+
+async function onInvoicePaymentFailed(env: Env, invoice: any): Promise<boolean> {
+  if (!invoiceSubscriptionId(invoice)) return true;
+  const user = await findUser(env, invoice.customer ?? null, invoiceUserId(invoice));
+  if (!user) return false;
+  try {
+    await sendPaymentFailedEmail(user.email, env.RESEND_API_KEY);
+  } catch (err) {
+    console.error('payment_failed_email_error', err);
+  }
+  return true;
+}
+
+// The customer's cancel/resume (or an edit in the Stripe dashboard) arrives here as
+// cancel_at_period_end; mirror it so the My Page state matches Stripe.
+async function onSubscriptionUpdated(env: Env, subscription: any): Promise<boolean> {
+  if (!['active', 'trialing', 'past_due'].includes(subscription.status)) return true;
+  const user = await findUser(env, subscription.customer ?? null, subscription.metadata?.user_id ?? null);
+  if (!user) return false;
+  const canceledAt = subscription.cancel_at_period_end ? (user.canceled_at ?? new Date().toISOString()) : null;
+  await env.USERS_DB.prepare('UPDATE users SET canceled_at = ? WHERE id = ?').bind(canceledAt, user.id).run();
+  return true;
+}
+
+// The subscription has ended (period ran out after a cancellation, or payments kept failing). Access
+// already stops by itself when premium_expires_at passes, so only record the cancellation.
+async function onSubscriptionDeleted(env: Env, subscription: any): Promise<boolean> {
+  const user = await findUser(env, subscription.customer ?? null, subscription.metadata?.user_id ?? null);
+  if (!user) return true;
+  await env.USERS_DB.prepare('UPDATE users SET canceled_at = COALESCE(canceled_at, ?) WHERE id = ?')
+    .bind(new Date().toISOString(), user.id)
+    .run();
+  return true;
+}
+
+export async function handleStripeWebhook(request: Request, env: Env): Promise<Response> {
+  if (!env.STRIPE_WEBHOOK_SECRET) {
+    console.error('stripe_webhook_secret_missing');
+    return new Response('not configured', { status: 503 });
+  }
+  const rawBody = await request.text();
+  const valid = await verifyStripeSignature(rawBody, request.headers.get('Stripe-Signature'), env.STRIPE_WEBHOOK_SECRET);
+  if (!valid) {
+    console.error('stripe_webhook_bad_signature');
+    return new Response('invalid signature', { status: 400 });
   }
 
-  return new Response('successok', { status: 200 });
+  let event: { type: string; data: { object: any } };
+  try {
+    event = JSON.parse(rawBody);
+  } catch {
+    return new Response('invalid json', { status: 400 });
+  }
+
+  try {
+    let handled = true;
+    switch (event.type) {
+      case 'checkout.session.completed':
+        await onCheckoutCompleted(env, event.data.object);
+        break;
+      case 'invoice.paid':
+        handled = await onInvoicePaid(env, event.data.object);
+        break;
+      case 'invoice.payment_failed':
+        handled = await onInvoicePaymentFailed(env, event.data.object);
+        break;
+      case 'customer.subscription.updated':
+        handled = await onSubscriptionUpdated(env, event.data.object);
+        break;
+      case 'customer.subscription.deleted':
+        handled = await onSubscriptionDeleted(env, event.data.object);
+        break;
+      default:
+        break; // events we don't act on are acknowledged so Stripe stops sending them
+    }
+    // 500 makes Stripe retry later (e.g. the customer record isn't linked yet).
+    return handled ? new Response('ok', { status: 200 }) : new Response('retry', { status: 500 });
+  } catch (err) {
+    console.error('stripe_webhook_error', event.type, err);
+    return new Response('error', { status: 500 });
+  }
 }

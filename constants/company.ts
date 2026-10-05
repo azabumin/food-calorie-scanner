@@ -5,6 +5,10 @@ export const COMPANY = {
   email: 'azabumin@gmail.com',
 };
 
+// While false, /pricing shows "applications are paused" instead of the payment flow. Keep in sync
+// with CHECKOUT_OPEN in worker/src/payments.ts (the server refuses checkout regardless).
+export const PAYMENTS_OPEN = true;
+
 export const PRICING = {
   monthlyYen: 580,
   annualYen: 4800,

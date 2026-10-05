@@ -74,8 +74,7 @@ async function sendViaResend(
   }
 }
 
-// Sent when a scheduled ZEUS charge (継続予約登録 renewal, or the initial trial-end charge)
-// comes back result=NG. Not localized per-user (we don't store a server-side language
+// Sent when a Stripe subscription payment fails (invoice.payment_failed). Not localized per-user (we don't store a server-side language
 // preference) -- bilingual JA/EN covers the large majority of this app's users well enough
 // for a safety-net notice like this.
 export async function sendPaymentFailedEmail(email: string, resendApiKey: string | undefined): Promise<void> {

@@ -1,18 +1,24 @@
 import { handleCancelSubscription, handleResumeSubscription } from './account';
 import { handleLogin, handleMe, handleRegister, resolveAuthedUserId } from './auth';
-import { handleCheckoutStart, handleZeusWebhook } from './payments';
+import { handleCheckoutStart, handleStripeWebhook } from './payments';
 
 // `Env` (RATE_LIMIT_KV, USERS_DB, ALLOWED_ORIGIN) comes from the generated
 // worker-configuration.d.ts (run `npx wrangler types` after changing wrangler.jsonc).
-// ANTHROPIC_API_KEY, AUTH_SECRET and ZEUS_IP_CODE are secrets, so they aren't in that
+// ANTHROPIC_API_KEY, AUTH_SECRET and the Stripe keys are secrets, so they aren't in that
 // config-derived type — extend it here.
 declare global {
   interface Env {
     ANTHROPIC_API_KEY: string;
     AUTH_SECRET: string;
-    // ZEUS-issued IP code (clientip) for LinkPoint. Not set yet -- ZEUS issues it once the
-    // merchant screening fully completes. Run: wrangler secret put ZEUS_IP_CODE
-    ZEUS_IP_CODE: string;
+    // Stripe (see payments.ts). The first two are secrets (wrangler secret put ...); the price and
+    // coupon ids are not sensitive. All stay unset until the Stripe account is live.
+    STRIPE_SECRET_KEY?: string; // sk_live_... (sk_test_... while testing)
+    STRIPE_WEBHOOK_SECRET?: string; // whsec_... of the /payments/stripe-webhook endpoint
+    STRIPE_PRICE_ID?: string; // price_... : 580 yen / month, tax included
+    STRIPE_FREE_MONTH_COUPON_ID?: string; // coupon: 100% off, duration "once" (13th month free)
+    // Test-only knobs: point at a fake Stripe, or open checkout without editing the code.
+    STRIPE_API_BASE?: string;
+    PAYMENTS_ENABLED?: string;
     // Optional -- unset until the Resend account + dietdiary.jp domain verification is done.
     // See email.ts. Until then, payment-failure emails just log instead of sending.
     RESEND_API_KEY?: string;
@@ -328,14 +334,20 @@ export default {
     }
 
     // Payment routes don't call Claude either, and the webhook has no user auth at all
-    // (ZEUS calls it server-to-server) -- both skip the AI budget below.
+    // (Stripe calls it server-to-server; the signature is what authenticates it) -- both skip the
+    // AI budget below.
     if (url.pathname === '/payments/checkout' && request.method === 'POST') {
       const userId = await resolveAuthedUserId(request, env);
       if (!userId) return jsonResponse({ error: 'unauthorized' }, 401, corsHeaders);
       return handleCheckoutStart(request, env, corsHeaders, userId);
     }
+    if (url.pathname === '/payments/stripe-webhook' && request.method === 'POST') {
+      return handleStripeWebhook(request, env);
+    }
+    // The ZEUS contract for this site is cancelled. Acknowledge any stray callback ZEUS may still
+    // send (it retries and emails an error notice unless it gets "successok") without acting on it.
     if (url.pathname === '/payments/webhook' && request.method === 'GET') {
-      return handleZeusWebhook(request, env);
+      return new Response('successok', { status: 200 });
     }
 
     if ((url.pathname === '/account/cancel' || url.pathname === '/account/resume') && request.method === 'POST') {

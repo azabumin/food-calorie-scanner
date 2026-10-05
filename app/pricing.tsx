@@ -1,20 +1,20 @@
 import { Link } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { COLORS, RADIUS, SPACING } from '../constants/theme';
-import { PRICING } from '../constants/company';
+import { PAYMENTS_OPEN, PRICING } from '../constants/company';
 import { FREE_DAILY_ANALYZE_LIMIT, FREE_TREND_DAYS, PREMIUM_TREND_DAYS } from '../lib/membership';
 import { fetchMe, loadAuthToken } from '../lib/auth';
-import { CheckoutError, startZeusCheckout, submitZeusOrder } from '../lib/payment';
+import { CheckoutError, redirectToCheckout, startCheckout } from '../lib/payment';
 
-type Step = 'plans' | 'confirm' | 'phone';
+type Step = 'plans' | 'confirm';
 
 export default function PricingScreen() {
   const [step, setStep] = useState<Step>('plans');
   const [authToken, setAuthToken] = useState<string | null | undefined>(undefined); // undefined = still loading
   const [isPremium, setIsPremium] = useState(false);
-  const [phone, setPhone] = useState('');
+  const [needLogin, setNeedLogin] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -28,21 +28,30 @@ export default function PricingScreen() {
     });
   }, []);
 
-  async function handleSubmitPhone() {
-    if (!authToken) return;
+  async function handlePay() {
     setErrorMsg(null);
+    if (!authToken) {
+      setNeedLogin(true);
+      return;
+    }
     setSubmitting(true);
     try {
-      const checkout = await startZeusCheckout(authToken, phone);
-      submitZeusOrder(checkout); // navigates the browser away to ZEUS -- nothing after this runs
+      const url = await startCheckout(authToken);
+      redirectToCheckout(url); // navigates the browser away to Stripe's payment page
     } catch (e) {
       setSubmitting(false);
-      if (e instanceof CheckoutError && e.code === 'invalid_phone') {
-        setErrorMsg('電話番号を正しく入力してください（例：09012345678）。');
-      } else if (e instanceof CheckoutError && e.code === 'already_active') {
+      const code = e instanceof CheckoutError ? e.code : 'unknown';
+      if (code === 'already_active') {
         setErrorMsg('すでにプレミアムをご利用いただける状態です。トップページに戻ってご確認ください。');
-      } else if (e instanceof CheckoutError && e.code === 'unauthorized') {
+      } else if (code === 'subscription_exists') {
+        setErrorMsg('すでにお申し込み済みのプランがあります。お支払い状況はマイページでご確認ください。');
+      } else if (code === 'payments_paused') {
+        setErrorMsg('プレミアムプランのお申し込みは、現在一時停止しております。再開まで今しばらくお待ちください。');
+      } else if (code === 'unauthorized') {
         setErrorMsg('ログインの有効期限が切れています。お手数ですが再度ログインしてください。');
+        setNeedLogin(true);
+      } else if (code === 'unavailable') {
+        setErrorMsg('決済サービスに接続できませんでした。しばらくしてからもう一度お試しください。');
       } else {
         setErrorMsg('通信エラーが発生しました。しばらくしてからもう一度お試しください。');
       }
@@ -93,12 +102,23 @@ export default function PricingScreen() {
           <Text style={styles.loyaltyNote}>
             {`12ヶ月連続でご利用いただくと、13ヶ月目のご利用料金が無料になります。`}
           </Text>
-          <Text style={styles.trialNote}>
-            {`ご登録から${PRICING.trialDays}日間は、全機能を無料でお試しいただけます（カード登録は不要です）。プレミアムプランは、お申し込みのお支払いを完了した時点で決済され、以降は毎月自動更新されます。`}
-          </Text>
-          <TouchableOpacity style={styles.primaryButton} onPress={() => setStep('confirm')}>
-            <Text style={styles.primaryButtonText}>この内容で申し込む</Text>
-          </TouchableOpacity>
+          {PAYMENTS_OPEN ? (
+            <>
+              <Text style={styles.trialNote}>
+                {`ご登録から${PRICING.trialDays}日間は、全機能を無料でお試しいただけます（カード登録は不要です）。プレミアムプランは、お申し込みのお支払いを完了した時点で決済され、以降は毎月自動更新されます。`}
+              </Text>
+              <TouchableOpacity style={styles.primaryButton} onPress={() => setStep('confirm')}>
+                <Text style={styles.primaryButtonText}>この内容で申し込む</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <Text style={styles.pausedTitle}>プレミアムプランのお申し込みは、現在一時停止しています</Text>
+              <Text style={styles.trialNote}>
+                {`再開までしばらくお待ちください。無料プランは、これまでどおりご利用いただけます。ご登録から${PRICING.trialDays}日間は、全機能を無料でお試しいただけます（カード登録は不要です）。`}
+              </Text>
+            </>
+          )}
         </View>
       )}
 
@@ -112,7 +132,7 @@ export default function PricingScreen() {
           <View style={styles.confirmRow}>
             <Text style={styles.confirmLabel}>今回のお支払い</Text>
             <Text style={styles.confirmValue}>
-              {`${PRICING.monthlyYen}円（税込）。「お支払いに進む」を押して次の画面でカード情報を入力すると、ただちに請求され、プレミアムのご利用が始まります。`}
+              {`${PRICING.monthlyYen}円（税込）。下のボタンを押して次の画面（決済サービスStripeのページ）でカード情報を入力すると、ただちに請求され、プレミアムのご利用が始まります。`}
             </Text>
           </View>
           <View style={styles.confirmRow}>
@@ -127,74 +147,43 @@ export default function PricingScreen() {
               マイページからいつでも解約（次回更新の停止）が可能です。解約後もお支払い済み期間の終了日まで引き続きご利用いただけます。
             </Text>
           </View>
-          <TouchableOpacity style={styles.primaryButton} onPress={() => setStep('phone')}>
-            <Text style={styles.primaryButtonText}>お支払いに進む</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.secondaryButton} onPress={() => setStep('plans')}>
+
+          {isPremium ? (
+            <>
+              <Text style={styles.cardTitle}>すでにプレミアムをご利用中です</Text>
+              <Text style={styles.confirmValue}>ご利用状況の確認や解約のお手続きは、マイページから行えます。</Text>
+              <Link href="/mypage" style={styles.primaryButton}>
+                <Text style={styles.primaryButtonText}>マイページへ</Text>
+              </Link>
+            </>
+          ) : needLogin ? (
+            <>
+              <Text style={styles.cardTitle}>ログインが必要です</Text>
+              <Text style={styles.confirmValue}>
+                お支払いのお手続きにはログインが必要です。ログイン後、もう一度お申し込みください。
+              </Text>
+              <Link href="/account" style={styles.primaryButton}>
+                <Text style={styles.primaryButtonText}>ログイン画面へ</Text>
+              </Link>
+            </>
+          ) : (
+            <>
+              {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
+              <TouchableOpacity
+                style={[styles.primaryButton, (submitting || authToken === undefined) && styles.primaryButtonDisabled]}
+                onPress={handlePay}
+                disabled={submitting || authToken === undefined}
+              >
+                {submitting ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.primaryButtonText}>{`${PRICING.monthlyYen}円を支払ってプレミアムを開始する`}</Text>
+                )}
+              </TouchableOpacity>
+            </>
+          )}
+          <TouchableOpacity style={styles.secondaryButton} onPress={() => setStep('plans')} disabled={submitting}>
             <Text style={styles.secondaryButtonText}>プラン選択に戻る</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {step === 'phone' && authToken === undefined && (
-        <View style={styles.card}>
-          <ActivityIndicator color={COLORS.primary} />
-        </View>
-      )}
-
-      {step === 'phone' && authToken === null && (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>ログインが必要です</Text>
-          <Text style={styles.confirmValue}>
-            お支払いのお手続きにはログインが必要です。ログイン後、もう一度お申し込みください。
-          </Text>
-          <Link href="/account" style={styles.primaryButton}>
-            <Text style={styles.primaryButtonText}>ログイン画面へ</Text>
-          </Link>
-        </View>
-      )}
-
-      {step === 'phone' && !!authToken && isPremium && (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>すでにプレミアムをご利用中です</Text>
-          <Text style={styles.confirmValue}>
-            ご利用状況の確認や解約のお手続きは、マイページから行えます。
-          </Text>
-          <Link href="/mypage" style={styles.primaryButton}>
-            <Text style={styles.primaryButtonText}>マイページへ</Text>
-          </Link>
-        </View>
-      )}
-
-      {step === 'phone' && !!authToken && !isPremium && (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>連絡先電話番号のご入力</Text>
-          <Text style={styles.trialNote}>
-            決済サービス提供元（ZEUS）の画面でカード情報をご入力いただくために必要です。
-          </Text>
-          <TextInput
-            style={styles.phoneInput}
-            value={phone}
-            onChangeText={setPhone}
-            placeholder="09012345678"
-            placeholderTextColor={COLORS.textMuted}
-            keyboardType="phone-pad"
-            autoComplete="tel"
-          />
-          {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
-          <TouchableOpacity
-            style={[styles.primaryButton, submitting && styles.primaryButtonDisabled]}
-            onPress={handleSubmitPhone}
-            disabled={submitting}
-          >
-            {submitting ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text style={styles.primaryButtonText}>{`${PRICING.monthlyYen}円を支払ってプレミアムを開始する`}</Text>
-            )}
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.secondaryButton} onPress={() => setStep('confirm')} disabled={submitting}>
-            <Text style={styles.secondaryButtonText}>戻る</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -339,20 +328,16 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 18,
   },
+  pausedTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: COLORS.primaryDark,
+    lineHeight: 20,
+  },
   trialNote: {
     fontSize: 12,
     color: COLORS.textMuted,
     lineHeight: 18,
-  },
-  phoneInput: {
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: RADIUS.md,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    fontSize: 16,
-    color: COLORS.text,
-    backgroundColor: COLORS.chipBg,
   },
   errorText: {
     fontSize: 12.5,

@@ -119,19 +119,27 @@ type UserRow = {
 };
 
 // The site owner's own account (used to demo the app / verify it works) should never be
-// blocked by trial expiry or the ZEUS payment gate. This overrides the *response*, not the
-// DB row -- nothing here looks like a real ZEUS-billed subscription, it just always
+// blocked by trial expiry or the payment gate. This overrides the *response*, not the
+// DB row -- nothing here looks like a real paid subscription, it just always
 // resolves as premium for this one email.
 const ADMIN_EMAILS = new Set(['azabumin@gmail.com']);
+
+// The owner's own mailbox, including Gmail "+tag" aliases (azabumin+test1@gmail.com). The owner account
+// itself always counts as premium, so it can never go through checkout; a +alias is a normal account
+// that mail still reaches, which makes it the way to test a real payment end to end.
+export function isOwnerEmail(email: string): boolean {
+  const [local, domain] = email.toLowerCase().split('@');
+  if (!local || !domain) return false;
+  return ADMIN_EMAILS.has(`${local.split('+')[0]}@${domain}`);
+}
 
 function tokenTtlMs(email: string): number {
   return ADMIN_EMAILS.has(email.toLowerCase()) ? ADMIN_TOKEN_TTL_MS : TOKEN_TTL_MS;
 }
 
-// is_premium alone never goes back to 0 on its own -- ZEUS's continuous-reservation renewal
-// is a manual monthly process (see payments.ts / docs/billing-cycle.md), so a missed or failed
-// renewal has to expire access itself rather than leaving it premium forever. premium_expires_at
-// is set (and pushed out another cycle) by the webhook every time a real charge succeeds.
+// is_premium alone never goes back to 0 on its own, so a missed or failed renewal has to expire
+// access itself rather than leaving it premium forever. premium_expires_at is set (and pushed out
+// another cycle) by the Stripe webhook every time an invoice is paid (see payments.ts).
 export function resolveIsPremium(email: string, isPremiumDb: boolean, premiumExpiresAt: string | null): boolean {
   if (ADMIN_EMAILS.has(email.toLowerCase())) return true;
   if (!isPremiumDb) return false;
